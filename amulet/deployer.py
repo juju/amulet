@@ -10,7 +10,7 @@ _environment = None
 _interfaces = []
 
 
-def deploy(service, charm=None):
+def add(service, charm=None):
     # Do charm revision look ups?
     if service in get_services():
         raise ValueError('Service is already set to be deployed')
@@ -24,8 +24,8 @@ def relate(from_charm, to_charm):
     relations[from_charm].append(to_charm)
 
 
-def series(series):
-    if default_series:
+def series(series=None):
+    if series:
         _series = series
     else:
         return _series
@@ -50,16 +50,16 @@ def set_environment(env):
     _environment = env
 
 
-def get_services():
+def services():
     return _services
 
 
-def get_relations():
+def relations():
     return _relations
 
 
-def get_schema():
-    return _generate_deployer_map(get_services(), get_relations())
+def schema():
+    return _generate_deployer_map(services(), relations())
 
 
 def configure(service, options={}):
@@ -83,9 +83,9 @@ def _generate_deployer_map(services, relations):
         }
     }
 
+
 def _find_common_interface(*args)
 
 
 def _build_sentries(relation_data=None):
-    
     pass
