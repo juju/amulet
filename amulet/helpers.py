@@ -66,20 +66,23 @@ class JujuVersion(object):
 
 JUJU_VERSION = JujuVersion()
 
-def environments_yaml(juju_home="~/.juju/"):
+def environments(juju_home="~/.juju/"):
     env_file = os.path.expanduser(os.path.join(juju_home, 'environments.yaml'))
     if not os.path.isfile(env_file):
         raise IOError('%s was not found.' % env_file)
 
     with open(env_file, 'r') as env_yaml:
-        environments = yaml.safe_load(env_yaml.read())
+        envs = yaml.safe_load(env_yaml.read())
 
-    return environments
+    return envs
 
 def default_environment(juju_home="~/.juju/"):
-    environments = environments_yaml(juju_home)
-    if 'default' in environments:
-        return environments['default']
+    envs = environments(juju_home)
+    if 'default' in envs:
+        return envs['default']
     else:
-        return environments['environments'].itervalues().next()
+        if len(envs['environments']) != 1:
+            raise ValueError('No default environment specified.')
+
+        return envs['environments'].itervalues().next()
 
