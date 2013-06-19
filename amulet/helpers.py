@@ -55,11 +55,9 @@ class JujuVersion(object):
         cmd = ['juju', 'version']
         try:
             version = subprocess.check_output(cmd)
-            version = version.split('-')[0]
         except:
             cmd[1] = '--version'
             version = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-            version = version.split()[1]
 
         self.update_version(self.parse_version(version))
 
