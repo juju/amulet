@@ -21,7 +21,6 @@ def setup_parser():
 def main():
     p = setup_parser()
     args = p.parse_args()
-    print args
     args.func(args)
 
 if __name__ == '__main__':
