@@ -1,91 +1,88 @@
 
 import os
+import re
 import yaml
+import json
 
-_services = {}
-_relations = {}
-_schema = {}
-_series = 'precise'
-_environment = None
-_interfaces = []
+import helpers
 
 
-def add(service, charm=None):
-    # Do charm revision look ups?
-    if service in get_services():
-        raise ValueError('Service is already set to be deployed')
-    _services[service] = {'branch': charm or 'lp:charms/%s' % service}
+class Deployer(object):
+    def __init__(self, environment=None, series='precise', sentries=True):
+        self.services = {}
+        self.relations = {}
+        self.series = series
+        self.sentries = sentries
+        self.environment = environment or helpers.default_environment()
+        self.interfaces = []
 
+    def load(self, deploy_cfg):
+        self.environment = deploy_cfg.keys()[0]
+        schema = deploy_cfg[self.environment]
+        self.services = schema['services']
+        self.series = schema['series']
 
-def relate(from_charm, to_charm):
-    if not from_charm in relations:
-        relations[from_charm] = []
+        for relation in schema['relations']:
+            self.relations[relation] = schema['relations'][relation]['consumes']
 
-    relations[from_charm].append(to_charm)
+    def add(self, service, charm=None, units=1):
+        # Do charm revision look ups?
+        if service in self.services:
+            raise ValueError('Service is already set to be deployed')
+        if charm and charm.startswith('cs:~'):
+            m = re.search('^cs:(~[\w-]+)/([\w-]+)', charm)
+            charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
+                                                  m.group(2))
 
+        self.services[service] = {'branch': charm or 'lp:charms/%s' % service,
+                                  'units': units}
 
-def series(series=None):
-    if series:
-        _series = series
-    else:
-        return _series
+    def relate(self, from_charm, to_charm):
+        if not from_charm in self.relations:
+            self.relations[from_charm] = []
 
+        self.relations[from_charm].append(to_charm)
 
-def _get_default_environment():
-    try:
-        env_file = open(os.path.expanduser('~/.juju/environments.yaml'), 'r')
-        env = yaml.safe_load(env_file)
-    except:
-        raise Exception('Unable to parse ~/.juju/environments.yaml')
-    else:
-        if 'default' in env:
-            return env.default
-        else if count(env.environments) == 1:
-            return env.environments[0]
+    def schema(self):
+        return self.deployer_map(self.services, self.relations)
 
-        raise new ValueError('No default environment configured')
+    def configure(self, service, **options):
+        if service not in self.services:
+            raise ValueError('Service has not yet been described')
+        if not 'options' in self.services[service]:
+            self.services[service]['options'] = options
+        else:
+            self.services[service]['options'].update(options)
 
+    def setup(self, timeout=300):
+        pass
 
-def set_environment(env):
-    _environment = env
-
-
-def services():
-    return _services
-
-
-def relations():
-    return _relations
-
-
-def schema():
-    return _generate_deployer_map(services(), relations())
-
-
-def configure(service, options={}):
-    if service not in get_services():
-        raise ValueError('Service has not yet been described')
-    _services[service]['options'] = options
-
-
-def setup(timeout=300):
-    pass
-
-
-def _generate_deployer_map(services, relations):
-    juju_env = _environment or _get_default_environment()
-    _build_relation_scaffold()
-    deployer_map = {
-        juju_env: {
-            'series': _series,
-            'services': _services,
-            'relations': _get_relations()
+    def deployer_map(self, services, relations):
+        self.build_sentries(self.relations)
+        deployer_map = {
+            self.environment: {
+                'series': self.series,
+                'services': self.services,
+                'relations': self.build_relations(self.relations)
+            }
         }
-    }
 
+        return deployer_map
 
-def _find_common_interface(*args)
+    def _find_common_interface(self, *args):
+        pass
 
+    def build_relations(self, relation_data=None):
+        if not relation_data:
+            relation_data = self.relations
 
-def _build_sentries(relation_data=None):
-    pass
+        weight = 100
+        relations = {}
+        for key in relation_data:
+            relations[key] = {'weight': weight, 'consumes': relation_data[key]}
+            weight -= 1
+
+        return relations
+
+    def build_sentries(self, relation_data=None):
+        pass
