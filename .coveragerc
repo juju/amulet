@@ -1,0 +1,13 @@
+[run]
+omit =
+    *yaml*
+    *mock*
+    *nose*
+
+[report]
+exclude_lines =
+    def setup_parser
+    if __name__ == '__main__'
+    def setup_logging
+    def main
+    class StoreTimedelta
