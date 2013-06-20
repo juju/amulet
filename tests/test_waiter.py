@@ -121,3 +121,49 @@ class WaiterTest(unittest.TestCase):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
 
         self.assertRaises(KeyError, waiter.status)
+
+
+class WaitTest(unittest.TestCase):
+    @patch('amulet.waiter.status')
+    def test_wait(self, waiter_status):
+        waiter_status.return_value = {'test': {'0': 'started'}}
+
+        self.assertTrue(wait(juju_env='dummy', timeout=1))
+        waiter_status.assert_called_with(juju_env='dummy')
+
+    @patch('amulet.waiter.status')
+    @patch('amulet.timeout')
+    def test_wait_timeout(self, tout, waiter_status):
+        waiter_status.return_value = {'test': {'0': 'pending'}}
+        tout.side_effect = TimeoutError
+        self.assertRaises(TimeoutError, wait, juju_env='dummy')
+
+    @patch('amulet.waiter.status')
+    @patch.dict('os.environ', {'JUJU_ENV': 'testing-env'})
+    def test_wait_juju_env(self, waiter_status):
+        waiter_status.return_value = {'test': {'0': 'started'}}
+        wait()
+        waiter_status.assert_called_with(juju_env='testing-env')
+
+    @patch('amulet.waiter.status')
+    @patch('amulet.default_environment')
+    @patch.dict('os.environ', {'JUJU_HOME': '/var/home'})
+    def test_wait_default_juju_env(self, default_env, waiter_status):
+        waiter_status.return_value = {'test': {'0': 'started'}}
+        default_env.return_value = 'testing-default-env'
+        wait()
+        waiter_status.assert_called_with(juju_env='testing-default-env')
+
+    @patch('amulet.waiter.status')
+    def test_wait_not_ready(self, waiter_status):
+        waiter_status.side_effect = [{'test': {'0': 'pending'}},
+                                     {'test': {'0': 'started'}}]
+
+        self.assertTrue(wait(juju_env='dummy', timeout=1))
+
+    @patch('amulet.waiter.status')
+    def test_wait_exception(self, waiter_status):
+        waiter_status.side_effect = [Exception,
+                                     TimeoutError]
+
+        self.assertRaises(TimeoutError, wait, juju_env='dummy')

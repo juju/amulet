@@ -21,14 +21,12 @@ def wait(*args, **kwargs):
 
     """
     import os
-    import helpers
 
     if not 'juju_env' in kwargs:
-        if os.environ['JUJU_ENV']:
+        if 'JUJU_ENV' in os.environ:
             kwargs['juju_env'] = os.environ['JUJU_ENV']
         else:
-            kwargs['juju_env'] = helpers.default_environment(
-                os.environ['JUJU_HOME'])
+            kwargs['juju_env'] = default_environment(os.environ['JUJU_HOME'])
 
     if not 'timeout' in kwargs:
         kwargs['timeout'] = 300
@@ -56,11 +54,5 @@ def wait(*args, **kwargs):
 
     except TimeoutError:
         raise
-    except:
-        raise
 
     return True
-
-
-def watch(service, unit, criteria):
-    pass
