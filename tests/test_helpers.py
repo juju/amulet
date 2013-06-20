@@ -29,6 +29,7 @@ environments:
     juju-origin: ppa
     ssl-hostname-verification: true'''
 
+
 class HelpersTest(unittest.TestCase):
     @patch('subprocess.check_output')
     def test_jujuversion_go(self, mock_check_output):

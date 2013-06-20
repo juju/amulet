@@ -22,8 +22,8 @@ class Deployer(object):
         self.services = schema['services']
         self.series = schema['series']
 
-        for relation in schema['relations']:
-            self.relations[relation] = schema['relations'][relation]['consumes']
+        for rel in schema['relations']:
+            self.relations[rel] = schema['relations'][rel]['consumes']
 
     def add(self, service, charm=None, units=1):
         # Do charm revision look ups?

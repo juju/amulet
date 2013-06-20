@@ -6,7 +6,6 @@ from helpers import TimeoutError, timeout, default_environment
 
 
 def wait(*args, **kwargs):
-    import os
     """Wait until all criteria is met for a given juju environment
 
     When run without parameters the following defaults are used:
@@ -21,11 +20,15 @@ def wait(*args, **kwargs):
       amulet.wait('service_a', 'service_a/1')
 
     """
+    import os
+    import helpers
+
     if not 'juju_env' in kwargs:
         if os.environ['JUJU_ENV']:
             kwargs['juju_env'] = os.environ['JUJU_ENV']
         else:
-            kwargs['juju_env'] = default_environment(os.environ['JUJU_HOME'])
+            kwargs['juju_env'] = helpers.default_environment(
+                os.environ['JUJU_HOME'])
 
     if not 'timeout' in kwargs:
         kwargs['timeout'] = 300

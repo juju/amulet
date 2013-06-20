@@ -5,9 +5,10 @@ import yaml
 import subprocess
 import helpers
 
-from helpers import JUJU_VERSION, TimeoutError
+from helpers import JujuVersion, TimeoutError
 
 _success_states = ['started']
+
 
 # Move these to another module?
 def _get_gojuju_status(environment=None):
@@ -39,6 +40,7 @@ def _parse_unit_state(data):
 
 def status(*args, **kwargs):
     status = {}
+    version = helpers.JujuVersion()
 
     if not 'juju_env' in kwargs:
         raise KeyError('No juju_env set')
@@ -46,7 +48,7 @@ def status(*args, **kwargs):
     juju_env = kwargs['juju_env']
 
     try:
-        if JUJU_VERSION.major == 0:
+        if version.major == 0:
             juju_status = _get_pyjuju_status(juju_env)
         else:
             juju_status = _get_gojuju_status(juju_env)
@@ -81,6 +83,7 @@ def status(*args, **kwargs):
 
     return status
 
+
 def setup_parser(parent):
     from . import wait
 
@@ -103,4 +106,3 @@ def setup_parser(parent):
     parser.add_argument('services', nargs='*',
                         help="What services or units to wait on")
     parser.set_defaults(func=wait_cmd)
-

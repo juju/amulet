@@ -2,7 +2,7 @@ clean:
 	find . -name '*.pyc' -delete
 	rm -f .coverage
 
-tests:
+test:
 	@echo Testing...
 	@nosetests --nologcapture
 
@@ -12,7 +12,7 @@ coverage:
 
 lint:
 	@echo  Validating Python syntax...
-	@echo `find -name *.py -exec pep8 {} \;`
+	@echo "`find -name "*.py" -exec pep8 {} \;`"
 	@echo `grep -rl '^#!/.*python' .` | xargs -r -n1 pep8 && echo OK
 
-check: tests lint
+check: test lint
