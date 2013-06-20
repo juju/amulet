@@ -16,3 +16,5 @@ lint:
 	@echo `grep -rl '^#!/.*python' .` | xargs -r -n1 pep8 && echo OK
 
 check: test lint
+
+all: clean coverage lint
