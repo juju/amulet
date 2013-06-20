@@ -31,11 +31,11 @@ def _get_pyjuju_status(environment=None):
     return yaml.safe_load(status_yml)
 
 
-def _parse_unit_state(data):
+def get_state(data):
     states = ['life', 'relations-error', 'agent-state']
     for state_key in states:
         if state_key in data:
-            return data[state_key]
+            return str(data[state_key])
 
 
 def status(*args, **kwargs):
@@ -73,12 +73,11 @@ def status(*args, **kwargs):
         # http://stackoverflow.com/a/7205672/196832
         units = juju_status['services'][service]['units']
         if unit:
-            state = _parse_unit_state(units['/'.join([service, unit])])
-            status[service][unit] = state
+            status[service][unit] = get_state(units['/'.join([service, unit])])
         else:
             for unit_name in units:
                 unit = unit_name.split('/')[1]
-                state = _parse_unit_state(units['/'.join([service, unit])])
+                state = get_state(units['/'.join([service, unit])])
                 status[service][unit] = state
 
     return status
