@@ -89,3 +89,25 @@ class HelpersTest(unittest.TestCase):
         menvironments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
         default = helpers.default_environment()
         self.assertEqual('gojuju', default)
+
+    @patch.object(helpers, 'environments')
+    def test_default_environment_no_default(self, menvironments):
+        environments_yaml = """
+        environments:
+          gojuju1:
+            type: cloud
+            access-key: xxx
+            secret-key: yyy
+            control-bucket: gojuju-xyxyz
+            admin-secret: zyxyx
+            default-series: world"""
+        menvironments.return_value = yaml.safe_load(environments_yaml)
+        self.assertEqual('gojuju1', helpers.default_environment())
+
+    @patch.object(helpers, 'environments')
+    def test_default_environment_no_default_multi_fail(self, menvironments):
+        envs = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
+        del envs['default']
+        menvironments.return_value = envs
+
+        self.assertRaises(ValueError, helpers.default_environment)
