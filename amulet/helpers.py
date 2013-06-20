@@ -15,7 +15,6 @@ class TimeoutError(Exception):
 @contextmanager
 def timeout(seconds):
     def signal_handler(signum, frame):
-        print "Triggered signal handler"
         raise TimeoutError()
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
