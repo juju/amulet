@@ -37,9 +37,9 @@ class JujuVersion(object):
     def parse_version(self, version_str):
         version = version_str.split()
         if len(version) > 1:
-            version_str = version[1]
+            version_str = str(version[1])
         else:
-            version_str = version[0]
+            version_str = str(version[0])
 
         return version_str.split('-')[0].split('.')
 
@@ -83,4 +83,4 @@ def default_environment(juju_home="~/.juju/"):
         if len(envs['environments']) != 1:
             raise ValueError('No default environment specified.')
 
-        return envs['environments'].iterkeys().next()
+        return next(iter(envs['environments'].keys()))

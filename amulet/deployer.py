@@ -6,7 +6,7 @@ import json
 import subprocess
 import tempfile
 
-import helpers
+from . import helpers
 
 
 class Deployer(object):
@@ -21,7 +21,7 @@ class Deployer(object):
         self.deployer = juju_deployer
 
     def load(self, deploy_cfg):
-        self.environment = deploy_cfg.keys()[0]
+        self.environment = list(deploy_cfg.keys())[0]
         schema = deploy_cfg[self.environment]
         self.services = schema['services']
         self.series = schema['series']
@@ -104,6 +104,7 @@ class Deployer(object):
     def build_sentries(self, relation_data=None):
         pass
 
+
 def setup_parser(parent):
     def default_options(parser):
         parser.add_argument('-d', '--deployment',
@@ -122,10 +123,10 @@ def setup_parser(parent):
         try:
             wait(*args.services, **vars(args))
         except TimeoutError:
-            print >> sys.stderr, 'Timeout criteria was met'
+            sys.stderr.write('Timeout criteria was met\n')
             sys.exit(124)
         except:
-            print >> sys.stderr, 'Unexpected error occurred'
+            sys.stderr.write('Unexpected error occurred\n')
             raise
 
         sys.exit(0)
@@ -136,7 +137,7 @@ def setup_parser(parent):
     parser = parent.add_parser('deployer', help="build deployer schema")
     deployer_subs = parser.add_subparsers()
     add = deployer_subs.add_parser('add',
-                          help='Add SERVICE to deployment')
+                                   help='Add SERVICE to deployment')
 
     default_options(add)
     add.add_argument('-n', '--num-units', help='number of units to deploy',

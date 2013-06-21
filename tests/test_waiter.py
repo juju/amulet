@@ -8,10 +8,10 @@ from amulet import waiter
 
 from amulet.helpers import TimeoutError, JujuVersion
 
-from helper import JujuStatus
+from .helper import JujuStatus
 
 from mock import patch, call, Mock, MagicMock
-from StringIO import StringIO
+from io import StringIO
 
 
 class WaiterTest(unittest.TestCase):

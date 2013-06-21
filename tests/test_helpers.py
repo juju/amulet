@@ -7,7 +7,7 @@ import yaml
 from amulet import helpers
 
 from mock import patch, call, Mock, MagicMock
-from StringIO import StringIO
+from io import StringIO
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju
@@ -68,7 +68,7 @@ class HelpersTest(unittest.TestCase):
         mcheck_output.assert_called_once_with(['juju', 'version'])
 
     @patch('os.path.isfile')
-    @patch('__builtin__.open')
+    @patch('builtins.open')
     def test_environments(self, mock_open, mock_exists):
         mock_open.return_value.__enter__ = lambda s: s
         mock_open.return_value.__exit__ = Mock()

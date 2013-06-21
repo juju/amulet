@@ -4,16 +4,15 @@ clean:
 
 test:
 	@echo Testing...
-	@nosetests --nologcapture
+	@nosetests3 --nologcapture
 
 coverage:
 	@echo Testing with coverage...
-	@nosetests --nologcapture --with-coverage --cover-package=juju_tests
+	@nosetests3 --nologcapture --with-coverage --cover-package=juju_tests
 
 lint:
 	@echo  Validating Python syntax...
-	@echo "`find -name "*.py" -exec pep8 {} \;`"
-	@echo `grep -rl '^#!/.*python' .` | xargs -r -n1 pep8 && echo OK
+	@echo "`find -name "*.py" -exec pep8 {} \;`" && pep8 bin/amulet && echo OK
 
 check: test lint
 

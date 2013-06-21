@@ -3,9 +3,9 @@ import os
 import sys
 import yaml
 import subprocess
-import helpers
+from . import helpers
 
-from helpers import JujuVersion, TimeoutError
+from .helpers import JujuVersion, TimeoutError
 
 _success_states = ['started']
 
@@ -55,7 +55,7 @@ def status(*args, **kwargs):
     except TimeoutError:
         raise
     except Exception as e:
-        print e
+        print(e)
         return status
 
     if not args:
@@ -90,10 +90,10 @@ def setup_parser(parent):
         try:
             wait(*args.services, **vars(args))
         except TimeoutError:
-            print >> sys.stderr, 'Timeout criteria was met'
+            sys.stderr.write('Timeout criteria was met\n')
             sys.exit(124)
         except:
-            print >> sys.stderr, 'Unexpected error occurred'
+            sys.stderr.write('Unexpected error occurred\n')
             raise
 
         sys.exit(0)

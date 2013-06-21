@@ -1,8 +1,8 @@
 
-import waiter
+from . import waiter
 
-from deployer import Deployer
-from helpers import TimeoutError, timeout, default_environment
+from .deployer import Deployer
+from .helpers import TimeoutError, timeout, default_environment
 
 
 def wait(*args, **kwargs):
