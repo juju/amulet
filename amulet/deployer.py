@@ -3,18 +3,22 @@ import os
 import re
 import yaml
 import json
+import subprocess
+import tempfile
 
 import helpers
 
 
 class Deployer(object):
-    def __init__(self, environment=None, series='precise', sentries=True):
+    def __init__(self, environment=None, series='precise', sentries=True,
+                 juju_deployer=None):
         self.services = {}
         self.relations = {}
         self.series = series
         self.sentries = sentries
         self.environment = environment or helpers.default_environment()
         self.interfaces = []
+        self.deployer = juju_deployer
 
     def load(self, deploy_cfg):
         self.environment = deploy_cfg.keys()[0]
@@ -55,7 +59,20 @@ class Deployer(object):
             self.services[service]['options'].update(options)
 
     def setup(self, timeout=300):
-        pass
+        if not self.deployer:
+            raise NameError('Path to juju-deployer is not defined.')
+
+        _, s = tempfile.mkstemp(prefix='amulet-juju-deployer-', suffix='.json')
+        with open(s, 'w') as f:
+            f.write(json.dumps(self.schema()))
+
+        try:
+            with helpers.timeout(timeout):
+                subprocess.check_call([os.path.expanduser(self.deployer), '-w',
+                                       '-t', '-c', s, '-e', self.environment,
+                                       '-L'])
+        finally:
+            os.remove(s)
 
     def deployer_map(self, services, relations):
         self.build_sentries(self.relations)
