@@ -1,7 +1,7 @@
 
 from . import waiter
 
-from .deployer import Deployer
+#from .deployer import Deployer
 from .helpers import TimeoutError, timeout, default_environment
 
 

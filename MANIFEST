@@ -2,7 +2,11 @@
 README
 setup.py
 amulet/__init__.py
-amulet/deployer.py
 amulet/helpers.py
 amulet/waiter.py
+amulet/expect/__init__.py
 bin/amulet
+tests/__init__.py
+tests/helper.py
+tests/test_helpers.py
+tests/test_waiter.py
