@@ -2,6 +2,7 @@
 from . import waiter
 
 from .deployer import Deployer
+from .charmstore import CharmStore
 from .helpers import TimeoutError, timeout, default_environment
 
 
