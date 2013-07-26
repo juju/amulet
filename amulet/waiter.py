@@ -101,7 +101,8 @@ def setup_parser(parent):
     parser = parent.add_parser('wait', help="Wait until criteria is met")
     parser.add_argument('-e', '--environment', dest='juju_env',
                         help="Juju environment")
-    parser.add_argument('-t', '--timeout', help="Timeout in seconds", type=int)
+    parser.add_argument('-t', '--timeout', help="Timeout in seconds", type=int,
+                        default=300)
     parser.add_argument('services', nargs='*',
                         help="What services or units to wait on")
     parser.set_defaults(func=wait_cmd)
