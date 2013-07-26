@@ -10,24 +10,26 @@ from . import helpers
 
 
 class Deployer(object):
-    def __init__(self, environment=None, series='precise', sentries=True,
-                 juju_deployer=None):
+    def __init__(self, juju_env=None, series='precise', sentries=True,
+                 juju_deployer='juju-deployer'):
         self.services = {}
-        self.relations = {}
+        self.relations = []
         self.series = series
-        self.sentries = sentries
-        self.environment = environment or helpers.default_environment()
+        self.use_sentries = sentries
+        self.sentries = {}
+        self.juju_env = juju_env or helpers.default_environment()
         self.interfaces = []
         self.deployer = juju_deployer
 
     def load(self, deploy_cfg):
-        self.environment = list(deploy_cfg.keys())[0]
-        schema = deploy_cfg[self.environment]
+        self.juju_env = list(deploy_cfg.keys())[0]
+        schema = deploy_cfg[self.juju_env]
         self.services = schema['services']
         self.series = schema['series']
+        self.relations = []
 
         for rel in schema['relations']:
-            self.relations[rel] = schema['relations'][rel]['consumes']
+            self.relations.append(rel)
 
     def add(self, service, charm=None, units=1):
         # Do charm revision look ups?
@@ -38,14 +40,26 @@ class Deployer(object):
             charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
                                                   m.group(2))
 
-        self.services[service] = {'branch': charm or 'lp:charms/%s' % service,
-                                  'units': units}
+        self.services[service] = {'branch': charm or 'lp:charms/%s' % service}
+        if units > 1:
+            self.services[service]['units'] = units
 
-    def relate(self, from_charm, to_charm):
-        if not from_charm in self.relations:
-            self.relations[from_charm] = []
+    def relate(self, *args):
+        if len(args) < 2:
+            raise LookupError('Need at least two services:relation')
 
-        self.relations[from_charm].append(to_charm)
+        for srv_rel in args:
+            if not ':' in srv_rel:
+                raise ValueError('All relations must be explicit, ' +
+                                 'service:relation')
+
+            service, relation = srv_rel.split(':')
+            if service not in self.services:
+                raise ValueError('Can not relate, service not deployed yet')
+        args = list(args)
+        first = args.pop(0)
+        for srv in args:
+            self.relations.append([first, srv])
 
     def schema(self):
         return self.deployer_map(self.services, self.relations)
@@ -58,7 +72,7 @@ class Deployer(object):
         else:
             self.services[service]['options'].update(options)
 
-    def setup(self, timeout=300):
+    def setup(self, timeout=500):
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
@@ -68,19 +82,19 @@ class Deployer(object):
 
         try:
             with helpers.timeout(timeout):
-                subprocess.check_call([os.path.expanduser(self.deployer), '-w',
-                                       '-t', '-c', s, '-e', self.environment,
-                                       '-L'])
+                subprocess.check_call([os.path.expanduser(self.deployer), '-W',
+                                       '-c', s, '-e', self.juju_env,
+                                       self.juju_env])
         finally:
             os.remove(s)
 
     def deployer_map(self, services, relations):
-        self.build_sentries(self.relations)
+        self.build_sentries()
         deployer_map = {
-            self.environment: {
+            self.juju_env: {
                 'series': self.series,
                 'services': self.services,
-                'relations': self.build_relations(self.relations)
+                'relations': self.build_relations()
             }
         }
 
@@ -89,20 +103,23 @@ class Deployer(object):
     def _find_common_interface(self, *args):
         pass
 
-    def build_relations(self, relation_data=None):
-        if not relation_data:
-            relation_data = self.relations
-
-        weight = 100
-        relations = {}
-        for key in relation_data:
-            relations[key] = {'weight': weight, 'consumes': relation_data[key]}
-            weight -= 1
+    def build_relations(self):
+        relations = []
+        for rel in self.relations:
+            relations.append(rel)
 
         return relations
 
-    def build_sentries(self, relation_data=None):
+    def build_sentries(self):
         pass
+        #for service, details in self.services:
+        #    if not '_has_sentry' in details or not details['_has_sentry']:
+        #        self.add('%s-sentry' % service, self.sentry_branch)
+        #        self.relate(service, '%s-sentry' % service)
+
+        # Build relationship sentry
+        #if self.relationship_sentry in self.services:
+        #    pass
 
 
 def setup_parser(parent):
@@ -134,7 +151,7 @@ def setup_parser(parent):
     def relate_cmd(args):
         pass
 
-    parser = parent.add_parser('deployer', help="build deployer schema")
+    parser = parent.add_parser('deployer', help='build deployer schema')
     deployer_subs = parser.add_subparsers()
     add = deployer_subs.add_parser('add',
                                    help='Add SERVICE to deployment')
