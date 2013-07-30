@@ -1,0 +1,6 @@
+#!/bin/bash
+
+apt-get install python3-all python3-setuptools
+easy_install3 cherrypy
+
+rsync -avz src/ /opt/api/

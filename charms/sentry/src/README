@@ -1,0 +1,44 @@
+
+installing on 10.04 - I don't know if this works!
+
+    checkout the python source and cd into its directory
+
+        sudo apt-get install zlib1g-dev
+        ./configure --with-zlib=/usr/include
+        make
+        sudo make install
+        sudo easy_install3 cherrypy
+
+installing on >= 10.10
+
+    sudo apt-get install python3
+    sudo apt-get install python3-setuptools
+    sudo easy_install3 cherrypy
+
+
+In oder to add functionality to the api, create a python module
+in the modules/ directory. This is an empty python file containing
+at east one "Module (object)" class.
+
+To expose functionality, there are three decorates:
+
+    @cherrypy.expose
+    @json_rpc.expose_secure
+    @json_rpc.expose_anonymous
+
+In order to use these, import cherrypy and json_rpc respectively.
+This is an example module, e.g. "modules/null.py":
+
+
+    import json_rpc
+    import subprocess
+
+
+    class Module (object):
+
+        @json_rpc.expose_secure
+        def null(self):
+            return None
+
+
+Remember that this method would be "/null", not "null/null".
