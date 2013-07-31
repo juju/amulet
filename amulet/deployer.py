@@ -3,15 +3,20 @@ import os
 import re
 import yaml
 import json
+import copy
 import subprocess
 import tempfile
 
 from . import helpers
+from . import charmstore
+
+from .charm import Builder
 
 
 class Deployer(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
-                 juju_deployer='juju-deployer'):
+                 juju_deployer='juju-deployer',
+                 sentry_template='/usr/share/amulet/charms/sentry'):
         self.services = {}
         self.relations = []
         self.series = series
@@ -20,6 +25,8 @@ class Deployer(object):
         self.juju_env = juju_env or helpers.default_environment()
         self.interfaces = []
         self.deployer = juju_deployer
+        self.sentry_template = sentry_template
+        self.relationship_sentry = None
 
     def load(self, deploy_cfg):
         self.juju_env = list(deploy_cfg.keys())[0]
@@ -89,7 +96,9 @@ class Deployer(object):
             os.remove(s)
 
     def deployer_map(self, services, relations):
-        self.build_sentries()
+        if self.use_sentries:
+            self.build_sentries()
+
         deployer_map = {
             self.juju_env: {
                 'series': self.series,
@@ -111,15 +120,39 @@ class Deployer(object):
         return relations
 
     def build_sentries(self):
-        pass
-        #for service, details in self.services:
-        #    if not '_has_sentry' in details or not details['_has_sentry']:
-        #        self.add('%s-sentry' % service, self.sentry_branch)
-        #        self.relate(service, '%s-sentry' % service)
+        services = copy.deepcopy(self.services)
+        for service, details in services.items():
+            if service in self.sentries:
+                continue
+
+            if not '_has_sentry' in details or not details['_has_sentry']:
+                sentry = Builder('%s-sentry' % service, self.sentry_template,
+                                 subordinate=True)
+                self.add(sentry.metadata['name'], sentry.charm)
+                self.relate('%s:juju-info' % service, '%s:juju-info'
+                            % sentry.metadata['name'])
+                self.sentries[sentry.metadata['name']] = sentry
+                self.services[service]['_has_sentry'] = True
 
         # Build relationship sentry
-        #if self.relationship_sentry in self.services:
-        #    pass
+        if not self.relationship_sentry:
+            # Auto generate name
+            rel_sentry = Builder('relation-sentry', self.sentry_template)
+            self.sentries[rel_sentry.metadata['name']] = rel_sentry
+            self.relationship_sentry = rel_sentry
+
+        relations = copy.deepcopy(self.relations)
+        relation_sentry = self.relationship_sentry.metadata['name']
+        for relation in relations:
+            for service in relation:
+                if relation_sentry in service:
+                    break
+            else:
+                relation_name = "-".join(relation).replace(':', '_')
+                for rel in relation:
+                    self.relations.remove(relation)
+                    self.relate('%s:%s'
+                                % (relation_sentry, relation_name), rel)
 
 
 def setup_parser(parent):
