@@ -1,5 +1,6 @@
 clean:
 	find . -name '*.pyc' -delete
+	find . -name '*.bak' -delete
 	rm -f .coverage
 
 test:
