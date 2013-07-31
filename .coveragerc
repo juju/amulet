@@ -3,6 +3,8 @@ omit =
     *yaml*
     *mock*
     *nose*
+    *urllib3*
+    *six*
 
 [report]
 exclude_lines =
