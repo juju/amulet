@@ -109,7 +109,7 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(ValueError, d.configure, 'wordpress', tuning='optimized')
 
     def test_schema(self):
-        d = Deployer(juju_env='gojuju')
+        d = Deployer(juju_env='gojuju', sentries=False)
         d.add('mysql')
         d.configure('mysql', tuning='fastest')
         d.add('wordpress')
