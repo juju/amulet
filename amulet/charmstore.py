@@ -3,10 +3,11 @@ import os
 import json
 import urllib3
 
+
 class CharmStore(object):
     def __init__(self, host='manage.jujucharms.com', secure=True, version=2):
-        self.endpoint = '%s://%s/api/%s/' % ('https' if secure else 'http', host,
-                        version)
+        self.endpoint = '%s://%s/api/%s/' % ('https' if secure else 'http',
+                        host, version)
         self.version = version
         self.http = urllib3.PoolManager()
 
