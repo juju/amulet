@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -ex
+
+cd /opt/api/
+python3 server.py 2>&1 &

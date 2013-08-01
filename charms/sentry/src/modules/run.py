@@ -13,7 +13,7 @@ class Module (object):
 
         command = cherrypy.request.body.read().decode()
         try:
-            results = subprocess.check_output(command)
+            results = subprocess.check_output(cmd)
         except:
             raise cherrypy.HTTPError(500)
 

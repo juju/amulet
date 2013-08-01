@@ -1,6 +1,9 @@
 #!/bin/bash
 
-apt-get install python3-all python3-setuptools
+set -ex
+
+apt-get install -y python3-all python3-setuptools ssl-cert
 easy_install3 cherrypy
 
+mkdir -p /var/log/sentry/
 rsync -avz src/ /opt/api/
