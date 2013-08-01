@@ -4,6 +4,7 @@ import sys
 import yaml
 import shutil
 import tempfile
+import subprocess
 
 from . import helpers
 
@@ -23,9 +24,16 @@ class Builder(object):
             raise IOError('%s does not exist' % self.template)
 
         d = tempfile.mkdtemp(prefix='sentry%s_'
-                             % '-sub' if subordinate else '')
+                             % ('-sub' if subordinate else ''))
         self.charm = os.path.join(d, name)
         shutil.copytree(self.template, self.charm, symlinks=True)
+
+        with open(os.devnull, 'w') as devnull:
+            try:
+                subprocess.check_call(['bzr', 'init'], cwd=self.charm,
+                                      stdout=devnull, stderr=devnull)
+            except subprocess.CalledProcessError:
+                raise IOError('Unable to create bzr repo')
 
         if subordinate:
             self.require('juju-info', 'juju-info', {'scope': 'container'})
@@ -49,12 +57,27 @@ class Builder(object):
         # Build symlink to "global hooks" file
         if self.hook:
             for event in ['joined', 'changed', 'departed', 'broken']:
-                os.symlink(self.hook, os.path.join(self.charm, 'hooks',
-                           '%s-relation-%s' % (relation, event)))
+                hook_file = os.path.join(self.charm, 'hooks', '%s-relation-%s'
+                                         % (relation, event))
+                if not os.path.exists(hook_file):
+                    os.symlink(self.hook, hook_file)
 
         self._write_metadata()
 
     def _write_metadata(self):
-        metadata = yaml.dump(self.metadata)
+        metadata = yaml.dump(self.metadata, default_flow_style=False)
         with open(os.path.join(self.charm, 'metadata.yaml'), 'w') as m:
             m.write(metadata)
+
+        self.save()
+
+    def save(self):
+        with open(os.devnull, 'w') as devnull:
+            try:
+                subprocess.check_call(['bzr', 'add', '.'], cwd=self.charm,
+                                      stdout=devnull, stderr=devnull)
+                subprocess.check_call(['bzr', 'commit', '-m', 'Checkpoint'],
+                                      cwd=self.charm, stdout=devnull,
+                                      stderr=devnull)
+            except subprocess.CalledProcessError:
+                raise IOError('Unable to update bzr repo')
