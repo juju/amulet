@@ -27,6 +27,8 @@ class Deployer(object):
         self.deployer = juju_deployer
         self.sentry_template = sentry_template
         self.relationship_sentry = None
+        self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
+        self.charm_cache = {}
 
     def load(self, deploy_cfg):
         self.juju_env = list(deploy_cfg.keys())[0]
@@ -46,6 +48,9 @@ class Deployer(object):
             m = re.search('^cs:(~[\w-]+)/([\w-]+)', charm)
             charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
                                                   m.group(2))
+            charm_name = m.group(2)
+        #if charm and charm.startswith('lp:'):
+        #
 
         self.services[service] = {'branch': charm or 'lp:charms/%s' % service}
         if units > 1:
@@ -79,7 +84,7 @@ class Deployer(object):
         else:
             self.services[service]['options'].update(options)
 
-    def setup(self, timeout=500):
+    def setup(self, timeout=600):
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
@@ -91,7 +96,7 @@ class Deployer(object):
             with helpers.timeout(timeout):
                 subprocess.check_call([os.path.expanduser(self.deployer), '-W',
                                        '-c', s, '-e', self.juju_env,
-                                       self.juju_env])
+                                       self.juju_env], cwd=self.deployer_dir)
         finally:
             os.remove(s)
 
@@ -109,8 +114,24 @@ class Deployer(object):
 
         return deployer_map
 
-    def _find_common_interface(self, *args):
-        pass
+    # Move to charmstore?
+    def _get_relation(self, charm, relation):
+        if os.path.exists(os.path.join(charm, 'metadata.yaml')):
+            # GET METADATA FROM LOCAL CHARM
+            pass
+        else:
+            cs = charmstore.CharmStore()
+
+            try:
+                c = cs.charm(charm)
+                relations = c['charm']['relations']
+                for rel_type in c['charm']['relations']:
+                    for rel_name in relations[rel_type]:
+                        if rel_name == relation:
+                            return rel_type, \
+                                relations[rel_type][rel_name]['interface']
+            except:
+                pass
 
     def build_relations(self):
         relations = []
@@ -138,21 +159,34 @@ class Deployer(object):
         if not self.relationship_sentry:
             # Auto generate name
             rel_sentry = Builder('relation-sentry', self.sentry_template)
+
+            self.add(rel_sentry.metadata['name'], rel_sentry.charm)
             self.sentries[rel_sentry.metadata['name']] = rel_sentry
             self.relationship_sentry = rel_sentry
 
         relations = copy.deepcopy(self.relations)
         relation_sentry = self.relationship_sentry.metadata['name']
         for relation in relations:
-            for service in relation:
-                if relation_sentry in service:
+            for rel in relation:
+                service, rel_name = rel.split(':')
+                if service in self.sentries:
                     break
             else:
                 relation_name = "-".join(relation).replace(':', '_')
+                self.relations.remove(relation)
+                interface = self._get_relation(service, rel_name)[1]
+                self.relationship_sentry.provide('%s-%s' %
+                                                 ('requires', relation_name),
+                                                 interface)
+                self.relationship_sentry.require('%s-%s' %
+                                                 ('provides', relation_name),
+                                                 interface)
+
                 for rel in relation:
-                    self.relations.remove(relation)
-                    self.relate('%s:%s'
-                                % (relation_sentry, relation_name), rel)
+                    rel_data = self._get_relation(*rel.split(':'))
+                    self.relate('%s:%s-%s'
+                                % (relation_sentry, rel_data[0],
+                                   relation_name), rel)
 
 
 def setup_parser(parent):
