@@ -7,7 +7,7 @@ from . import helpers
 
 from .helpers import JujuVersion, TimeoutError
 
-_success_states = ['started']
+SUCESS_STATES = ['started']
 
 
 # Move these to another module?
@@ -38,8 +38,7 @@ def get_state(data):
             return str(data[state_key])
 
 
-def status(*args, **kwargs):
-    status = {}
+def status(juju_env=None):
     version = helpers.JujuVersion()
 
     if not 'juju_env' in kwargs:
@@ -55,8 +54,22 @@ def status(*args, **kwargs):
     except TimeoutError:
         raise
     except Exception as e:
-        print(e)
-        return status
+        raise
+
+    return juju_status
+
+
+def state(*args, **kwargs):
+    output = {}
+    version = helpers.JujuVersion()
+    juju_env = kwargs['juju_env']
+
+    try:
+        juju_status = status(juju_env)
+    except TimeoutError:
+        raise
+    except:
+        return output
 
     if not args:
         args = [service for service in juju_status['services']]
@@ -66,21 +79,21 @@ def status(*args, **kwargs):
         if not service in juju_status['services']:
             raise ValueError('%s is not in the deployment yet' % arg)
 
-        if not service in status:
-            status[service] = {}
+        if not service in output:
+            output[service] = {}
 
         # Use potential recurive + mergedicts?
         # http://stackoverflow.com/a/7205672/196832
         units = juju_status['services'][service]['units']
         if unit:
-            status[service][unit] = get_state(units['/'.join([service, unit])])
+            output[service][unit] = get_state(units['/'.join([service, unit])])
         else:
             for unit_name in units:
                 unit = unit_name.split('/')[1]
                 state = get_state(units['/'.join([service, unit])])
-                status[service][unit] = state
+                output[service][unit] = state
 
-    return status
+    return output
 
 
 def setup_parser(parent):

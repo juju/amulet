@@ -37,7 +37,7 @@ def wait(*args, **kwargs):
         with timeout(kwargs['timeout']):
             while not ready:
                 try:
-                    status = waiter.status(*args, juju_env=kwargs['juju_env'])
+                    status = waiter.state(*args, juju_env=kwargs['juju_env'])
                 except TimeoutError:
                     raise
                 except Exception as e:
@@ -45,7 +45,7 @@ def wait(*args, **kwargs):
 
                 for service in status:
                     for unit in status[service]:
-                        if status[service][unit] in waiter._success_states:
+                        if status[service][unit] in waiter.SUCESS_STATES:
                             ready = True
                         else:
                             ready = False

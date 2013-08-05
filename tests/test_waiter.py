@@ -52,31 +52,31 @@ class WaiterTest(unittest.TestCase):
                          waiter.get_state(data[1]))
         self.assertEqual('pending', waiter.get_state(data[2]))
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
-    def test_status_py(self, jver, pyjuju_status):
+    def test_state_py(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
         mstatus = JujuStatus('juju')
         mstatus.add('test-charm')
 
         pyjuju_status.return_value = yaml.safe_load(str(mstatus))
         output = {'test-charm': {'0': 'started'}}
-        self.assertEqual(output, waiter.status(juju_env='test'))
+        self.assertEqual(output, waiter.state(juju_env='test'))
 
-    @patch.object(waiter, '_get_gojuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
-    def test_status_go(self, jver, pyjuju_status):
+    def test_state_go(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(1, 11, 0, False)]
         mstatus = JujuStatus('juju')
         mstatus.add('test-charm')
 
         pyjuju_status.return_value = yaml.safe_load(str(mstatus))
         output = {'test-charm': {'0': 'started'}}
-        self.assertEqual(output, waiter.status(juju_env='test'))
+        self.assertEqual(output, waiter.state(juju_env='test'))
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
-    def test_status_specific_units(self, jver, pyjuju_status):
+    def test_state_specific_units(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
         mstatus = JujuStatus('juju')
         mstatus.add('test-charm')
@@ -88,64 +88,64 @@ class WaiterTest(unittest.TestCase):
         pyjuju_status.return_value = yaml.safe_load(str(mstatus))
         output = {'test-charm': {'1': 'pending'},
                   'test-charm-b': {'0': 'started', '1': 'started'}}
-        self.assertEqual(output, waiter.status('test-charm/1', 'test-charm-b',
-                                               juju_env='test'))
+        self.assertEqual(output, waiter.state('test-charm/1', 'test-charm-b',
+                                              juju_env='test'))
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
-    def test_status_service_not_there(self, jver, pyjuju_status):
+    def test_state_service_not_there(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
         mstatus = JujuStatus('juju')
 
         pyjuju_status.return_value = yaml.safe_load(str(mstatus))
-        self.assertRaises(ValueError, waiter.status, 'srvc', juju_env='test')
+        self.assertRaises(ValueError, waiter.state, 'srvc', juju_env='test')
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
-    def test_status_timeout(self, jver, pyjuju_status):
+    def test_state_timeout(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
 
         pyjuju_status.side_effect = TimeoutError
-        self.assertRaises(TimeoutError, waiter.status, juju_env='test')
+        self.assertRaises(TimeoutError, waiter.state, juju_env='test')
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
     def test_status_error(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
 
         pyjuju_status.side_effect = Exception
-        self.assertEqual({}, waiter.status(juju_env='test'))
+        self.assertEqual({}, waiter.state(juju_env='test'))
 
-    @patch.object(waiter, '_get_pyjuju_status')
+    @patch.object(waiter, 'status')
     def test_status_no_juju_env(self, jver):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
 
-        self.assertRaises(KeyError, waiter.status)
+        self.assertRaises(KeyError, waiter.state)
 
 
 class WaitTest(unittest.TestCase):
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     def test_wait(self, waiter_status):
         waiter_status.return_value = {'test': {'0': 'started'}}
 
         self.assertTrue(wait(juju_env='dummy', timeout=1))
         waiter_status.assert_called_with(juju_env='dummy')
 
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     @patch('amulet.timeout')
     def test_wait_timeout(self, tout, waiter_status):
         waiter_status.return_value = {'test': {'0': 'pending'}}
         tout.side_effect = TimeoutError
         self.assertRaises(TimeoutError, wait, juju_env='dummy')
 
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     @patch.dict('os.environ', {'JUJU_ENV': 'testing-env'})
     def test_wait_juju_env(self, waiter_status):
         waiter_status.return_value = {'test': {'0': 'started'}}
         wait()
         waiter_status.assert_called_with(juju_env='testing-env')
 
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     @patch('amulet.default_environment')
     @patch.dict('os.environ', {'JUJU_HOME': '/var/home'})
     def test_wait_default_juju_env(self, default_env, waiter_status):
@@ -154,14 +154,14 @@ class WaitTest(unittest.TestCase):
         wait()
         waiter_status.assert_called_with(juju_env='testing-default-env')
 
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     def test_wait_not_ready(self, waiter_status):
         waiter_status.side_effect = [{'test': {'0': 'pending'}},
                                      {'test': {'0': 'started'}}]
 
         self.assertTrue(wait(juju_env='dummy', timeout=1))
 
-    @patch('amulet.waiter.status')
+    @patch('amulet.waiter.state')
     def test_wait_exception(self, waiter_status):
         waiter_status.side_effect = [Exception,
                                      TimeoutError]
