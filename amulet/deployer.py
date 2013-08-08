@@ -13,7 +13,8 @@ from . import charmstore
 from .charm import Builder
 
 
-class Deployer(object):
+
+class Deployment(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
                  juju_deployer='juju-deployer',
                  sentry_template='/usr/share/amulet/charms/sentry'):
