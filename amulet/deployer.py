@@ -4,14 +4,18 @@ import re
 import yaml
 import json
 import copy
+import urllib
 import subprocess
+import requests
 import tempfile
 
 from . import helpers
 from . import charmstore
+from . import waiter
 
 from .charm import Builder
 
+from collections import namedtuple
 
 
 class Deployment(object):
@@ -20,14 +24,19 @@ class Deployment(object):
                  sentry_template='/usr/share/amulet/charms/sentry'):
         self.services = {}
         self.relations = []
-        self.series = series
-        self.use_sentries = sentries
-        self.sentries = {}
-        self.juju_env = juju_env or helpers.default_environment()
         self.interfaces = []
-        self.deployer = juju_deployer
+        self.series = series
+        self.deployed = False
+        self.juju_env = juju_env or helpers.default_environment()
+
+        self.sentry = Talisman()
+        self._sentries = {}
+        self.use_sentries = sentries
+        self.sentry_blacklist = []
         self.sentry_template = sentry_template
         self.relationship_sentry = None
+
+        self.deployer = juju_deployer
         self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
         self.charm_cache = {}
 
@@ -98,8 +107,21 @@ class Deployment(object):
                 subprocess.check_call([os.path.expanduser(self.deployer), '-W',
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
+            self.deployed = True
         finally:
             os.remove(s)
+
+        if self.deployed and self.use_sentries:
+            status = waiter.status(self.juju_env)
+            for service in self.services:
+                if not service in status['services']:
+                    pass  # Raise something?
+
+                # self.sentry.service[service] = ServiceSentry()
+
+                for unit in status['services'][service]:
+                    addy = status['services'][service][unit]['public-address']
+                    self.sentry.unit[unit] = UnitSentry(addy)
 
     def deployer_map(self, services, relations):
         if self.use_sentries:
@@ -118,21 +140,30 @@ class Deployment(object):
     # Move to charmstore?
     def _get_relation(self, charm, relation):
         if os.path.exists(os.path.join(charm, 'metadata.yaml')):
-            # GET METADATA FROM LOCAL CHARM
-            pass
+            relations = {}
+            with open(os.path.join(charm, 'metadata.yaml')) as m:
+                metadata = yaml.safe_load(m.read())
+            for key in ['requires', 'provides']:
+                if key in metadata:
+                    relations[key] = metadata[key]
         else:
             cs = charmstore.CharmStore()
 
             try:
                 c = cs.charm(charm)
                 relations = c['charm']['relations']
-                for rel_type in c['charm']['relations']:
-                    for rel_name in relations[rel_type]:
-                        if rel_name == relation:
-                            return rel_type, \
-                                relations[rel_type][rel_name]['interface']
             except:
-                pass
+                raise
+
+        if not relations:
+            raise Exception('No relations for charm')
+
+        for rel_type in c['charm']['relations']:
+            for rel_name in relations[rel_type]:
+                if rel_name == relation:
+                    return rel_type, relations[rel_type][rel_name]['interface']
+
+        return (None, None)
 
     def build_relations(self):
         relations = []
@@ -144,7 +175,7 @@ class Deployment(object):
     def build_sentries(self):
         services = copy.deepcopy(self.services)
         for service, details in services.items():
-            if service in self.sentries:
+            if service in self._sentries:
                 continue
 
             if not '_has_sentry' in details or not details['_has_sentry']:
@@ -153,7 +184,7 @@ class Deployment(object):
                 self.add(sentry.metadata['name'], sentry.charm)
                 self.relate('%s:juju-info' % service, '%s:juju-info'
                             % sentry.metadata['name'])
-                self.sentries[sentry.metadata['name']] = sentry
+                self._sentries[sentry.metadata['name']] = sentry
                 self.services[service]['_has_sentry'] = True
 
         # Build relationship sentry
@@ -162,7 +193,7 @@ class Deployment(object):
             rel_sentry = Builder('relation-sentry', self.sentry_template)
 
             self.add(rel_sentry.metadata['name'], rel_sentry.charm)
-            self.sentries[rel_sentry.metadata['name']] = rel_sentry
+            self._sentries[rel_sentry.metadata['name']] = rel_sentry
             self.relationship_sentry = rel_sentry
 
         relations = copy.deepcopy(self.relations)
@@ -170,12 +201,16 @@ class Deployment(object):
         for relation in relations:
             for rel in relation:
                 service, rel_name = rel.split(':')
-                if service in self.sentries:
+                if service in self._sentries:
                     break
             else:
                 relation_name = "-".join(relation).replace(':', '_')
                 self.relations.remove(relation)
-                interface = self._get_relation(service, rel_name)[1]
+                try:
+                    interface = self._get_relation(service, rel_name)[1]
+                except:
+                    continue
+
                 self.relationship_sentry.provide('%s-%s' %
                                                  ('requires', relation_name),
                                                  interface)
@@ -188,6 +223,87 @@ class Deployment(object):
                     self.relate('%s:%s-%s'
                                 % (relation_sentry, rel_data[0],
                                    relation_name), rel)
+
+
+class SentryError(Exception):
+    pass
+
+
+class Sentry(object):
+    def __init__(self, address, port=9001):
+        self.config = {}
+        self.config['address'] = 'https://%s:%s' % (address, port)
+
+    def file(self, filename):
+        return self.file_stat(filename)
+
+    def file_stat(self, filename):
+        raise NotImplemented()
+
+    def file_contents(self, filename):
+        raise NotImplemented()
+
+    def directory(self, *args):
+        return self.directory_stat(*args)
+
+    def directory_stat(self, *args):
+        raise NotImplemented()
+
+    def directory_contents(self, *args):
+        return self.directory_listing(*args)
+
+    def directory_listing(self, *args):
+        raise NotImplemented()
+
+    def _fetch(self, endpoint, query=None, data=None):
+        url = "%s/%s?%s" % (self.config['address'], endpoint,
+                            urllib.urlencode(query))
+        if data:
+            return requests.post(url, data=data)
+        else:
+            return requests.get(url)
+
+
+class UnitSentry(Sentry):
+    def file_stat(self, filename):
+        r = self._fetch_filesystem('/file', {'name': filename})
+        return r.json()
+
+    def _fetch_filesystem(self, endpoint, params):
+        r = self._fetch('/file/contents', {'name': filename})
+        if r.status_code == 404:
+            raise IOError('%s does not exist on unit' % filename)
+        elif r.status_code != 200:
+            raise SentryError('API returned the following: %s' % r.status_code)
+
+        return r
+
+    def file_contents(self, filename):
+        r = self._fetch_filesystem('/file/contents', {'name': filename})
+        return r.text
+
+    def directory_stat(self, path):
+        r = self._fetch_filesystem('/directory', {'name': path})
+        return r.json()
+
+    def directory_listing(self, path):
+        r = self._fetch_filesystem('/directory/contents', {'name': path})
+        return r.json()
+
+
+# Possibly use to build out instead of having code in setup()?
+class Talisman(object):
+    def __init__(self):
+        self.unit = {}
+        self.service = {}
+
+
+class ServiceSentry(Sentry):
+    pass
+
+
+class RelationSentry(Sentry):
+    pass
 
 
 def setup_parser(parent):
