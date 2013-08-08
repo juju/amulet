@@ -115,13 +115,18 @@ class Deployment(object):
             status = waiter.status(self.juju_env)
             for service in self.services:
                 if not service in status['services']:
-                    pass  # Raise something?
+                    continue  # Raise something?
 
                 # self.sentry.service[service] = ServiceSentry()
 
-                for unit in status['services'][service]:
-                    addy = status['services'][service][unit]['public-address']
-                    self.sentry.unit[unit] = UnitSentry(addy)
+                service_status = status['services'][service]
+
+                if not 'units' in service_status:
+                    continue  # It's a subordinate
+
+                for unit in service_status['units']:
+                    address = service_status['units'][unit]['public-address']
+                    self.sentry.unit[unit] = UnitSentry(address)
 
     def deployer_map(self, services, relations):
         if self.use_sentries:
@@ -257,11 +262,11 @@ class Sentry(object):
 
     def _fetch(self, endpoint, query=None, data=None):
         url = "%s/%s?%s" % (self.config['address'], endpoint,
-                            urllib.urlencode(query))
+                            urllib.parse.urlencode(query))
         if data:
-            return requests.post(url, data=data)
+            return requests.post(url, data=data, verify=False)
         else:
-            return requests.get(url)
+            return requests.get(url, verify=False)
 
 
 class UnitSentry(Sentry):
@@ -270,9 +275,9 @@ class UnitSentry(Sentry):
         return r.json()
 
     def _fetch_filesystem(self, endpoint, params):
-        r = self._fetch('/file/contents', {'name': filename})
+        r = self._fetch(endpoint, params)
         if r.status_code == 404:
-            raise IOError('%s does not exist on unit' % filename)
+            raise IOError('%s does not exist on unit' % params['name'])
         elif r.status_code != 200:
             raise SentryError('API returned the following: %s' % r.status_code)
 
