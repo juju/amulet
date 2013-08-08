@@ -41,10 +41,8 @@ def get_state(data):
 def status(juju_env=None):
     version = helpers.JujuVersion()
 
-    if not 'juju_env' in kwargs:
+    if not juju_env:
         raise KeyError('No juju_env set')
-
-    juju_env = kwargs['juju_env']
 
     try:
         if version.major == 0:
@@ -62,6 +60,10 @@ def status(juju_env=None):
 def state(*args, **kwargs):
     output = {}
     version = helpers.JujuVersion()
+
+    if not 'juju_env' in kwargs:
+        raise KeyError('No juju_env set')
+
     juju_env = kwargs['juju_env']
 
     try:
