@@ -8,8 +8,8 @@ import os
 import api
 import json_rpc
 
-class Instance (api.API):
 
+class Instance (api.API):
     def __init__(self):
         self._users = json.load(open("users.json"))
 
