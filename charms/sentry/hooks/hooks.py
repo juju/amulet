@@ -47,7 +47,7 @@ for unit_data_dir in glob.glob(os.path.join(other_data_dir, '*')):
         relation_data = json.loads(f.read().strip())
 
     subprocess.call(['juju-log', json.dumps(relation_data)])
-    relation_cmd_line = ['relation-set', '-r', relation_id]
+    relation_cmd_line = ['relation-set']
     for key, val in relation_data.items():
         if val is None:
             relation_cmd_line.append('{}='.format(key))
@@ -56,3 +56,16 @@ for unit_data_dir in glob.glob(os.path.join(other_data_dir, '*')):
 
     subprocess.call(['juju-log', ' '.join(relation_cmd_line)])
     subprocess.check_call(relation_cmd_line)
+
+    # Send our data to other units
+    if data:
+        rel_cmd = ['relation-set', '-r', relation_id]
+        for key, val in json.loads(data).items():
+            if val is None:
+                rel_cmd.append('{}='.format(key))
+            else:
+                rel_cmd.append('{}={}'.format(key, val))
+
+            subprocess.call(['juju-log', ' '.join(rel_cmd)])
+            subprocess.check_call(rel_cmd)
+
