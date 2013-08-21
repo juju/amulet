@@ -301,6 +301,7 @@ class Talisman(object):
     def __init__(self):
         self.unit = {}
         self.service = {}
+        self.relation
 
 
 class ServiceSentry(Sentry):
