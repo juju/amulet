@@ -9,7 +9,11 @@ set of tools for you to use.
 
 ## What's in a name?
 
-Amulet: Used for whatever, etc
+By definition, An amulet can be any object but its most important
+characteristic is its alleged power to protect its owner from danger or harm.
+
+By this definition, Amulet is designed to be a library which protects charm
+authors from having broken charms by making test writing easier.
 
 # Installation
 
