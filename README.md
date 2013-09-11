@@ -1,7 +1,12 @@
 # Introduction
 
 Amulet is a set of tools designed to simplify the testing process for charm
-authors. Ultimately, Amulet is to testing as Charm Helpers are to charm hooks.
+authors. Amulet aims to be a 
+- testing harness to ease the use of writing and running tests.
+- validation of charm relation data, not just what a charm expects/receives.
+- method to exercise and test charm relations outside of a deployment.
+
+Ultimately, Amulet is to testing as Charm Helpers are to charm hooks.
 While these tools are designed to help make test writing easier, much like
 charm helpers are designed to make hook writing easier, they are not required
 to write tests for charms. This library is offered as a completely optional
