@@ -130,8 +130,8 @@ class Deployment(object):
                     continue  # It's a subordinate
 
                 for unit in service_status['units']:
-                    address = service_status['units'][unit]['public-address']
-                    self.sentry.unit[unit] = UnitSentry(address)
+                    unit_data = service_status['units'][unit]
+                    self.sentry.unit[unit] = UnitSentry.fromunitdata(unit_data)
 
     def deployer_map(self, services, relations):
         if self.use_sentries:
@@ -322,6 +322,29 @@ class Talisman(object):
         self.service = {}
         self.relation = {}
 
+    def wait(self, timeout=300):
+        import time
+        #for unit in self.unit:
+        ready = False
+        try:
+            with helpers.timeout(timeout):
+                # Make sure we're in a 'started' state across the board
+                waiter.wait(timeout=timeout)
+                while not ready:
+                    time.sleep(0.5)
+                    for unit in self.unit.keys():
+                        status = self.unit[unit].juju_agent()
+                        # Check if we have a hook key and it's not None
+                        if 'hook' in status and status['hook']:
+                            ready = False
+                            break
+                        else:
+                            ready = True
+        except:
+            raise
+
+    def _sync(self):
+        pass
 
 class ServiceSentry(Sentry):
     pass
