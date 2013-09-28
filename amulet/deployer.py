@@ -265,6 +265,9 @@ class Sentry(object):
     def directory_listing(self, *args):
         raise NotImplemented()
 
+    def juju_agent(self):
+        return self._fetch('/juju').json()
+
     def _fetch(self, endpoint, query=None, data=None):
         url = "%s/%s?%s" % (self.config['address'], endpoint,
                             urllib.parse.urlencode(query))
