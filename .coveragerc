@@ -5,6 +5,8 @@ omit =
     *nose*
     *urllib3*
     *six*
+    *requests*
+    *chardet*
 
 [report]
 exclude_lines =
