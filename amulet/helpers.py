@@ -76,7 +76,16 @@ def environments(juju_home="~/.juju/"):
 
 
 def default_environment(juju_home="~/.juju/"):
+    juju_home = os.path.expanduser(juju_home)
     envs = environments(juju_home)
+    if os.path.exists(os.path.join(juju_home, 'current-environment')):
+        cur_env = None
+        with open(os.path.join(juju_home, 'current-environment')) as f:
+            cur_env = f.read().strip()
+
+        if cur_env in envs['environments']:
+            return cur_env
+
     if 'default' in envs:
         return envs['default']
     else:
