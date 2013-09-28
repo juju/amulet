@@ -142,6 +142,12 @@ def state(*args, **kwargs):
         if not service in output:
             output[service] = {}
 
+        if not 'units' in juju_status['services'][service]:
+            # Probably a subordinate
+            if 'subordinate-to' in juju_status['services'][service]:
+                del output[service]
+            continue
+
         # Use potential recurive + mergedicts?
         # http://stackoverflow.com/a/7205672/196832
         units = juju_status['services'][service]['units']
@@ -150,8 +156,8 @@ def state(*args, **kwargs):
         else:
             for unit_name in units:
                 unit = unit_name.split('/')[1]
-                state = get_state(units['/'.join([service, unit])])
-                output[service][unit] = state
+                s = get_state(units['/'.join([service, unit])])
+                output[service][unit] = s
 
     return output
 
