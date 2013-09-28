@@ -108,8 +108,13 @@ class Deployment(object):
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
             self.deployed = True
+        except subprocess.CalledProcess:
+            raise
         finally:
             os.remove(s)
+
+        if not self.deployed:
+            raise Exception('Deployment failed for an unknown reason')
 
         if self.deployed and self.use_sentries:
             status = waiter.status(self.juju_env)
