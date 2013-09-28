@@ -268,7 +268,7 @@ class Sentry(object):
     def juju_agent(self):
         return self._fetch('/juju').json()
 
-    def _fetch(self, endpoint, query=None, data=None):
+    def _fetch(self, endpoint, query={}, data=None):
         url = "%s/%s?%s" % (self.config['address'], endpoint,
                             urllib.parse.urlencode(query))
         if data:
