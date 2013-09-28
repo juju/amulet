@@ -314,6 +314,10 @@ class UnitSentry(Sentry):
         r = self._fetch_filesystem('/directory/contents', {'name': path})
         return r.json()
 
+    #d.sentry.unit[].relation('db', 'mysql:db')
+    def relation(self, from_rel, to_rel):
+        pass
+
 
 # Possibly use to build out instead of having code in setup()?
 class Talisman(object):
