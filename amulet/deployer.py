@@ -278,6 +278,17 @@ class Sentry(object):
 
 
 class UnitSentry(Sentry):
+    @classmethod
+    def fromunit(cls, unit):
+        pass
+
+    @classmethod
+    def fromunitdata(cls, unit_data):
+        address = unit_data['public-address']
+        unitsentry = cls(address)
+        unitsentry.info = unit_data
+        return unitsentry
+
     def file_stat(self, filename):
         r = self._fetch_filesystem('/file', {'name': filename})
         return r.json()
