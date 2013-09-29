@@ -335,7 +335,6 @@ class Talisman(object):
                 # Make sure we're in a 'started' state across the board
                 waiter.wait(timeout=timeout)
                 while not ready:
-                    time.sleep(0.5)
                     for unit in self.unit.keys():
                         status = self.unit[unit].juju_agent()
                         # Check if we have a hook key and it's not None
