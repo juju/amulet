@@ -91,3 +91,11 @@ class CharmStore(object):
             return json.loads(r.data.decode())
         else:
             raise Exception('No data returned')
+
+
+class Charm(object):
+    def __init__(self, metadata):
+        pass
+
+    def get_relation(self, relation):
+        pass
