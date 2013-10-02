@@ -41,31 +41,32 @@ def wait(*args, **kwargs):
         kwargs['timeout'] = 300
 
     ready = False
-    try:
-        with timeout(kwargs['timeout']):
-            while not ready:
-                try:
-                    status = state(*args, juju_env=kwargs['juju_env'])
-                except TimeoutError:
-                    raise
-                except Exception as e:
-                    raise
-                    continue
-
-                for service in status:
-                    for unit in status[service]:
-                        if status[service][unit] in SUCESS_STATES:
-                            ready = True
-                        else:
-                            ready = False
-                            break
-
-                    if not ready:
-                        break
-    except TimeoutError:
-        raise
+    with timeout(kwargs['timeout']):
+        while not ready:
+            try:
+                raise_for_state(*args, juju_env=kwargs['juju_env'])
+            except TimeoutError:
+                raise
+            except:
+                ready = False
+            else:
+                ready = True
 
     return True
+
+
+def raise_for_state(*args, juju_env):
+    status = state(*args, juju_env=juju_env)
+
+    for service in status:
+        for unit in status[service]:
+            if not status[service][unit] in SUCESS_STATES:
+                raise StateError("%s: %s" % (unit, status[service][unit]))
+
+
+class StateError(Exception):
+    def __init__(self, value="A unit is in a pending or error state"):
+        self.value = value
 
 
 # Move these to another module?

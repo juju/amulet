@@ -6,6 +6,7 @@ import yaml
 from amulet import wait
 from amulet import waiter
 
+from amulet.waiter import StateError
 from amulet.helpers import TimeoutError, JujuVersion
 
 from .helper import JujuStatus
@@ -131,10 +132,10 @@ class WaitTest(unittest.TestCase):
         self.assertTrue(wait(juju_env='dummy', timeout=1))
         waiter_status.assert_called_with(juju_env='dummy')
 
-    @patch('amulet.waiter.state')
+    @patch('amulet.waiter.raise_for_state')
     @patch('amulet.timeout')
     def test_wait_timeout(self, tout, waiter_status):
-        waiter_status.return_value = {'test': {'0': 'pending'}}
+        waiter_status.side_effect = TimeoutError
         tout.side_effect = TimeoutError
         self.assertRaises(TimeoutError, wait, juju_env='dummy')
 
@@ -147,11 +148,24 @@ class WaitTest(unittest.TestCase):
 
     @patch('amulet.waiter.state')
     @patch('amulet.default_environment')
-    @patch.dict('os.environ', {'JUJU_HOME': '/var/home'})
+    @patch.dict('os.environ', {'JUJU_HOME': '/tmp/juju-home'})
     def test_wait_default_juju_env(self, default_env, waiter_status):
+        if not os.path.exists('/tmp/juju-home'):
+            os.makedirs('/tmp/juju-home')
+        envyaml = yaml.dump({'default': 'testing-default-env',
+                             'environments': {'testing-default-env':
+                                              {'type': 'local'}}})
+        with open('/tmp/juju-home/environments.yaml', 'w') as f:
+            f.write(envyaml)
+
         waiter_status.return_value = {'test': {'0': 'started'}}
         default_env.return_value = 'testing-default-env'
-        wait()
+        try:
+            wait()
+        finally:
+            os.remove('/tmp/juju-home/environments.yaml')
+            os.removedirs('/tmp/juju-home')
+
         waiter_status.assert_called_with(juju_env='testing-default-env')
 
     @patch('amulet.waiter.state')
