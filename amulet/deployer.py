@@ -4,14 +4,13 @@ import re
 import yaml
 import json
 import copy
-import urllib
 import subprocess
-import requests
 import tempfile
 
 from . import helpers
 from . import charmstore
 from . import waiter
+from . import sentry
 
 from .charm import Builder
 
@@ -29,7 +28,7 @@ class Deployment(object):
         self.deployed = False
         self.juju_env = juju_env or helpers.default_environment()
 
-        self.sentry = Talisman()
+        self.sentry = None
         self._sentries = {}
         self.use_sentries = sentries
         self.sentry_blacklist = []
@@ -117,21 +116,7 @@ class Deployment(object):
             raise Exception('Deployment failed for an unknown reason')
 
         if self.deployed and self.use_sentries:
-            status = waiter.status(self.juju_env)
-            for service in self.services:
-                if not service in status['services']:
-                    continue  # Raise something?
-
-                # self.sentry.service[service] = ServiceSentry()
-
-                service_status = status['services'][service]
-
-                if not 'units' in service_status:
-                    continue  # It's a subordinate
-
-                for unit in service_status['units']:
-                    unit_data = service_status['units'][unit]
-                    self.sentry.unit[unit] = UnitSentry.fromunitdata(unit_data)
+            self.sentry = sentry.Talisman(self.services)
 
     def deployer_map(self, services, relations):
         if self.use_sentries:
@@ -205,128 +190,6 @@ class Deployment(object):
                     self.relate('%s:%s-%s'
                                 % (relation_sentry, rel_data[0],
                                    relation_name), rel)
-
-
-class SentryError(Exception):
-    pass
-
-
-class Sentry(object):
-    def __init__(self, address, port=9001):
-        self.config = {}
-        self.config['address'] = 'https://%s:%s' % (address, port)
-
-    def file(self, filename):
-        return self.file_stat(filename)
-
-    def file_stat(self, filename):
-        raise NotImplemented()
-
-    def file_contents(self, filename):
-        raise NotImplemented()
-
-    def directory(self, *args):
-        return self.directory_stat(*args)
-
-    def directory_stat(self, *args):
-        raise NotImplemented()
-
-    def directory_contents(self, *args):
-        return self.directory_listing(*args)
-
-    def directory_listing(self, *args):
-        raise NotImplemented()
-
-    def juju_agent(self):
-        return self._fetch('/juju').json()
-
-    def _fetch(self, endpoint, query={}, data=None):
-        url = "%s/%s?%s" % (self.config['address'], endpoint,
-                            urllib.parse.urlencode(query))
-        if data:
-            return requests.post(url, data=data, verify=False)
-        else:
-            return requests.get(url, verify=False)
-
-
-class UnitSentry(Sentry):
-    @classmethod
-    def fromunit(cls, unit):
-        pass
-
-    @classmethod
-    def fromunitdata(cls, unit_data):
-        address = unit_data['public-address']
-        unitsentry = cls(address)
-        unitsentry.info = unit_data
-        return unitsentry
-
-    def file_stat(self, filename):
-        r = self._fetch_filesystem('/file', {'name': filename})
-        return r.json()
-
-    def _fetch_filesystem(self, endpoint, params):
-        r = self._fetch(endpoint, params)
-        if r.status_code == 404:
-            raise IOError('%s does not exist on unit' % params['name'])
-        elif r.status_code != 200:
-            raise SentryError('API returned the following: %s' % r.status_code)
-
-        return r
-
-    def file_contents(self, filename):
-        r = self._fetch_filesystem('/file/contents', {'name': filename})
-        return r.text
-
-    def directory_stat(self, path):
-        r = self._fetch_filesystem('/directory', {'name': path})
-        return r.json()
-
-    def directory_listing(self, path):
-        r = self._fetch_filesystem('/directory/contents', {'name': path})
-        return r.json()
-
-    #d.sentry.unit[].relation('db', 'mysql:db')
-    def relation(self, from_rel, to_rel):
-        pass
-
-
-# Possibly use to build out instead of having code in setup()?
-class Talisman(object):
-    def __init__(self):
-        self.unit = {}
-        self.service = {}
-        self.relation = {}
-
-    def wait(self, timeout=300):
-        import time
-        #for unit in self.unit:
-        ready = False
-        try:
-            with helpers.timeout(timeout):
-                # Make sure we're in a 'started' state across the board
-                waiter.wait(timeout=timeout)
-                while not ready:
-                    for unit in self.unit.keys():
-                        status = self.unit[unit].juju_agent()
-                        # Check if we have a hook key and it's not None
-                        if 'hook' in status and status['hook']:
-                            ready = False
-                            break
-                        else:
-                            ready = True
-        except:
-            raise
-
-    def _sync(self):
-        pass
-
-class ServiceSentry(Sentry):
-    pass
-
-
-class RelationSentry(Sentry):
-    pass
 
 
 def setup_parser(parent):
