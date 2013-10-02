@@ -36,7 +36,10 @@ class Module (object):
             raise cherrypy.HTTPError(404)
 
         if not unit:
-            return {relation: list_units(relation)}
+            data = {}
+            for unit in self.list_units(relation):
+                data[unit] = json.loads(self.relation(relation, unit).decode())
+            return data
 
         data_file = os.path.join('/opt/relations', relation, unit, 'data')
         if not os.path.exists(data_file):
