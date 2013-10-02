@@ -147,34 +147,6 @@ class Deployment(object):
 
         return deployer_map
 
-    # Move to charmstore?
-    def _get_relation(self, charm, relation):
-        if os.path.exists(os.path.join(charm, 'metadata.yaml')):
-            relations = {}
-            with open(os.path.join(charm, 'metadata.yaml')) as m:
-                metadata = yaml.safe_load(m.read())
-            for key in ['requires', 'provides']:
-                if key in metadata:
-                    relations[key] = metadata[key]
-        else:
-            cs = charmstore.CharmStore()
-
-            try:
-                c = cs.charm(charm)
-                relations = c['charm']['relations']
-            except:
-                raise
-
-        if not relations:
-            raise Exception('No relations for charm')
-
-        for rel_type in c['charm']['relations']:
-            for rel_name in relations[rel_type]:
-                if rel_name == relation:
-                    return rel_type, relations[rel_type][rel_name]['interface']
-
-        return (None, None)
-
     def build_relations(self):
         relations = []
         for rel in self.relations:
@@ -217,7 +189,7 @@ class Deployment(object):
                 relation_name = "-".join(relation).replace(':', '_')
                 self.relations.remove(relation)
                 try:
-                    interface = self._get_relation(service, rel_name)[1]
+                    interface = charmstore.get_relation(service, rel_name)[1]
                 except:
                     continue
 
@@ -229,7 +201,7 @@ class Deployment(object):
                                                  interface)
 
                 for rel in relation:
-                    rel_data = self._get_relation(*rel.split(':'))
+                    rel_data = charmstore.get_relation(*rel.split(':'))
                     self.relate('%s:%s-%s'
                                 % (relation_sentry, rel_data[0],
                                    relation_name), rel)
