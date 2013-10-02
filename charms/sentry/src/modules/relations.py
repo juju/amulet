@@ -48,7 +48,7 @@ class Module (object):
         with open(data_file, 'r') as u:
             unit_data = json.loads(u.read())
 
-        return {relation: {unit: unit_data}}
+        return unit_data
 
     def list_units(self, relation):
         units = []
