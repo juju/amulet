@@ -6,6 +6,9 @@ import subprocess
 
 from contextlib import contextmanager
 
+SKIP = 100
+PASS = 0
+FAIL = 1
 
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
@@ -74,6 +77,12 @@ def environments(juju_home="~/.juju/"):
 
     return envs
 
+
+def raise_status(code, msg=None):
+    if msg:
+        print(msg)
+
+    sys.exit(code)
 
 def default_environment(juju_home="~/.juju/"):
     juju_home = os.path.expanduser(juju_home)
