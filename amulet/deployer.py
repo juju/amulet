@@ -14,8 +14,6 @@ from . import sentry
 
 from .charm import Builder
 
-from collections import namedtuple
-
 
 class Deployment(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
