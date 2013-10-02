@@ -2,6 +2,7 @@
 
 Amulet is a set of tools designed to simplify the testing process for charm
 authors. Amulet aims to be a 
+
 - testing harness to ease the use of writing and running tests.
 - validation of charm relation data, not just what a charm expects/receives.
 - method to exercise and test charm relations outside of a deployment.
@@ -146,7 +147,6 @@ accessed using the following:
     d.sentry.unit['mediawiki/0']
     d.sentry.service['mysql']
     d.sentry.service['mediawiki']
-    d.sentry.relations
 
 Sentries provide several methods for which you can use to gather information
 about an environment. Again, please refer to the Developer Documentation for a
@@ -154,3 +154,4 @@ complete list of endpoints available. The following are a few examples.
 
 
 ## Wait
+
