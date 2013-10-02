@@ -14,11 +14,11 @@ class Module (object):
         if not cherrypy.request.method == "GET":
             raise cherrypy.HTTPError(405)
 
-        if not os.path.exists('/opt/sentry/relations'):
+        if not os.path.exists('/opt/relations'):
             return {}
 
         relations = {}
-        for relation in glob.glob('/opt/sentry/relations/*'):
+        for relation in glob.glob('/opt/relations/*'):
             relname = os.path.basename(relation)
             relations[relname] = self.list_units(relname)
 
@@ -32,23 +32,24 @@ class Module (object):
         if not relation:
             raise cherrypy.HTTPError(400)
 
-        if not os.path.exists(os.path.join('/opt/sentry/relations', relation)):
+        if not os.path.exists(os.path.join('/opt/relations', relation)):
             raise cherrypy.HTTPError(404)
 
         if not unit:
             return {relation: list_units(relation)}
 
-        if not os.path.exists(os.path.join('/opt/sentry/relations', relation, unit)):
+        data_file = os.path.join('/opt/relations', relation, unit, 'data')
+        if not os.path.exists(data_file):
             raise cherrypy.HTTPError(404)
 
-        with open(os.path.join('/opt/sentry/relations', relation, unit), 'r') as u:
-            unit_data = json.loads(u.read().decode('UTF-8'))
+        with open(data_file, 'r') as u:
+            unit_data = json.loads(u.read())
 
         return {relation: {unit: unit_data}}
 
     def list_units(self, relation):
         units = []
-        for relunits in glob.glob('/opt/sentry/relations/%s/*' % relation):
+        for relunits in glob.glob('/opt/relations/%s/*' % relation):
             units.append(os.path.basename(relunits))
 
         return units
