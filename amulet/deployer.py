@@ -18,7 +18,7 @@ from .charm import Builder
 class Deployment(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
                  juju_deployer='juju-deployer',
-                 sentry_template='/usr/share/amulet/charms/sentry'):
+                 sentry_template=None):
         self.services = {}
         self.relations = []
         self.interfaces = []
@@ -30,7 +30,8 @@ class Deployment(object):
         self._sentries = {}
         self.use_sentries = sentries
         self.sentry_blacklist = []
-        self.sentry_template = sentry_template
+        self.sentry_template = sentry_template or os.path.join([
+            path.abspath(path.dirname(__file__)), 'charms/sentry'])
         self.relationship_sentry = None
 
         self.deployer = juju_deployer
