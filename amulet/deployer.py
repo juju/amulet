@@ -30,8 +30,8 @@ class Deployment(object):
         self._sentries = {}
         self.use_sentries = sentries
         self.sentry_blacklist = []
-        self.sentry_template = sentry_template or os.path.join([
-            path.abspath(path.dirname(__file__)), 'charms/sentry'])
+        self.sentry_template = sentry_template or os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
         self.relationship_sentry = None
 
         self.deployer = juju_deployer

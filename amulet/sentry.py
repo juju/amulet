@@ -39,7 +39,7 @@ class Sentry(object):
     def juju_agent(self):
         return self.query('/juju').json()
 
-    def query(endpoint, query={}, data=None):
+    def query(self, endpoint, query={}, data=None):
         return self._fetch(self.config['address'], endpoint, query, data)
 
     def _fetch(self, address, endpoint, query={}, data=None):
