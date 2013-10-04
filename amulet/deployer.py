@@ -52,13 +52,19 @@ class Deployment(object):
         # Do charm revision look ups?
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
-        if charm and charm.startswith('cs:~'):
-            m = re.search('^cs:(~[\w-]+)/([\w-]+)', charm)
-            charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
-                                                  m.group(2))
-            charm_name = m.group(2)
-        #if charm and charm.startswith('lp:'):
-        #
+        if charm:
+            if charm.startswith('cs:~'):
+                m = re.search('^cs:(~[\w-]+)/([\w-]+)', charm)
+                charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
+                                                      m.group(2))
+                charm_name = m.group(2)
+            else:
+                charm_name = charm.split(':')[-1].split('/')[-1]
+        else:
+            charm_name = service
+
+        if 'JUJU_TEST_CHARM' in os.environ:
+            pass # Copy the current parent directory to temp and deploy that
 
         self.services[service] = {'branch': charm or 'lp:charms/%s' % service}
         if units > 1:
