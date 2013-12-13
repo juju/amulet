@@ -25,6 +25,7 @@ class Deployment(object):
         self.series = series
         self.deployed = False
         self.juju_env = juju_env or helpers.default_environment()
+        self.charm_name = os.path.basename(os.getcwd())
 
         self.sentry = None
         self._sentries = {}
@@ -50,6 +51,7 @@ class Deployment(object):
 
     def add(self, service, charm=None, units=1):
         # Do charm revision look ups?
+        # TODO: Do this with charmworldlib
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
@@ -64,7 +66,10 @@ class Deployment(object):
             charm_name = service
 
         if 'JUJU_TEST_CHARM' in os.environ:
-            pass # Copy the current parent directory to temp and deploy that
+            pass  # Copy the current parent directory to temp and deploy that
+        elif self.charm_name:
+            if charm_name == self.charm_name:
+                charm = os.getcwd()
 
         self.services[service] = {'branch': charm or 'lp:charms/%s' % service}
         if units > 1:
