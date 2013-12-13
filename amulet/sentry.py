@@ -6,6 +6,7 @@ from . import waiter
 from . import helpers
 from . import charmstore
 
+
 class SentryError(Exception):
     pass
 
@@ -90,6 +91,9 @@ class UnitSentry(Sentry):
         r = self._fetch_filesystem('/directory/contents', {'name': path})
         return r.json()
 
+    def run(self, command):
+        pass
+
     #d.sentry.unit[].relation('db', 'mysql:db')
     def relation(self, from_rel, to_rel):
         # Build possible mappings, find the map, produce results
@@ -139,8 +143,8 @@ class Talisman(object):
 
             for unit in service_status['units']:
                 unit_data = service_status['units'][unit]
-                self.unit[unit] = UnitSentry.fromunitdata(unit,
-                                    unit_data, rel_sentry_addr)
+                self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data,
+                                                          rel_sentry_addr)
 
     def wait(self, timeout=300):
         import time
@@ -164,6 +168,7 @@ class Talisman(object):
 
     def _sync(self):
         pass
+
 
 class ServiceSentry(Sentry):
     pass

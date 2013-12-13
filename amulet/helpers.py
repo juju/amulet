@@ -10,6 +10,7 @@ SKIP = 100
 PASS = 0
 FAIL = 1
 
+
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
         self.value = value
@@ -83,6 +84,7 @@ def raise_status(code, msg=None):
         print(msg)
 
     sys.exit(code)
+
 
 def default_environment(juju_home="~/.juju/"):
     juju_home = os.path.expanduser(juju_home)

@@ -117,6 +117,6 @@ class DeployerTests(unittest.TestCase):
         d.relate('mysql:db', 'wordpress:db')
         schema = {'gojuju': {'services': {'mysql': {'branch':
                   'lp:charms/mysql', 'options': {'tuning': 'fastest'}},
-                 'wordpress': {'branch': 'lp:charms/wordpress'}}, 'series':
-                 'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
+                  'wordpress': {'branch': 'lp:charms/wordpress'}}, 'series':
+                  'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
         self.assertEqual(schema, d.schema())
