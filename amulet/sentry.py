@@ -92,7 +92,9 @@ class UnitSentry(Sentry):
         return r.json()
 
     def run(self, command):
-        pass
+        r = self.query('/run', data=command)
+        results = r.json()
+        return results['output'], results['code']
 
     #d.sentry.unit[].relation('db', 'mysql:db')
     def relation(self, from_rel, to_rel):

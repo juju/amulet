@@ -1,4 +1,5 @@
 
+import json
 import cherrypy
 import json_rpc
 import subprocess
@@ -13,8 +14,12 @@ class Module (object):
 
         command = cherrypy.request.body.read().decode()
         try:
-            results = subprocess.check_output(cmd)
-        except:
-            raise cherrypy.HTTPError(500)
+            code = 0
+            results = subprocess.check_output(command, shell=True)
+        except subprocess.CalledProcessError as e:
+            cherrypy.response.status = 500
+            code = e.returncode
+            results = e.output
 
-        return {'result': results}
+        return {'code': code, 'output': results.decode().strip()}
+
