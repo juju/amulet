@@ -7,3 +7,5 @@ easy_install3 cherrypy
 
 mkdir -p /var/log/sentry/
 rsync -avz src/ /opt/api/
+
+open-port 9001
