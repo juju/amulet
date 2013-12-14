@@ -38,7 +38,7 @@ class Builder(object):
         if subordinate:
             self.require('juju-info', 'juju-info', {'scope': 'container'})
 
-        os.chmod(os.path.join(self.charm, 'hooks', self.hook), 0755)
+        os.chmod(os.path.join(self.charm, 'hooks', self.hook), 0o755)
 
     def require(self, relation, interface, opts={}):
         self._add_relation(relation, interface, 'requires', opts)
