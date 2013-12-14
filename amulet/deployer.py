@@ -103,6 +103,11 @@ class Deployment(object):
         else:
             self.services[service]['options'].update(options)
 
+    def expose(self, service):
+        if service not in self.services:
+            raise ValueError('%s has not yet been described' % service)
+        self.services[service]['expose'] = True
+
     def setup(self, timeout=600):
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
@@ -161,6 +166,7 @@ class Deployment(object):
                 self.add(sentry.metadata['name'], sentry.charm)
                 self.relate('%s:juju-info' % service, '%s:juju-info'
                             % sentry.metadata['name'])
+                self.expose(sentry.metadata['name'])
                 self._sentries[sentry.metadata['name']] = sentry
                 self.services[service]['_has_sentry'] = True
 
@@ -170,6 +176,7 @@ class Deployment(object):
             rel_sentry = Builder('relation-sentry', self.sentry_template)
 
             self.add(rel_sentry.metadata['name'], rel_sentry.charm)
+            self.expose(rel_sentry.metadata['name'])
             self._sentries[rel_sentry.metadata['name']] = rel_sentry
             self.relationship_sentry = rel_sentry
 

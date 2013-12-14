@@ -109,6 +109,17 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(ValueError, d.configure, 'wordpress',
                           tuning='optimized')
 
+    def test_expose(self):
+        d = Deployment(juju_env='gojuju')
+        d.add('wordpress')
+        d.expose('wordpress')
+        self.assertEqual({'wordpress': {'branch': 'lp:charms/wordpress',
+                          'expose': True}}, d.services)
+
+    def test_expose_not_deployed(self):
+        d = Deployment(juju_env='gojuju')
+        self.assertRaises(ValueError, d.expose, 'wordpress')
+
     def test_schema(self):
         d = Deployment(juju_env='gojuju', sentries=False)
         d.add('mysql')
