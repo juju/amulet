@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='amulet',
-      version='1.1.0',
+      version='1.1.1',
       description='Tools to help with writing Juju Charm Functional tests',
       install_requires=['requests', 'argparse', 'pycrypto', 'paramiko', 'bzr',
                         'urllib', 'urllib3', 'yaml'],

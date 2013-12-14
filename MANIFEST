@@ -19,7 +19,6 @@ amulet/charms/sentry/src/users.json
 amulet/charms/sentry/src/log/sentry.access.log
 amulet/charms/sentry/src/log/sentry.error.log
 amulet/charms/sentry/src/modules/__init__.py
-amulet/charms/sentry/src/modules/__pycache__
 amulet/charms/sentry/src/modules/docs.py
 amulet/charms/sentry/src/modules/filesystem.py
 amulet/charms/sentry/src/modules/juju.py
