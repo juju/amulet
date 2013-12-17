@@ -122,7 +122,7 @@ class Deployment(object):
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
             self.deployed = True
-        except subprocess.CalledProcess:
+        except subprocess.CalledProcessError:
             raise
         finally:
             os.remove(s)
@@ -178,6 +178,7 @@ class Deployment(object):
             self.add(rel_sentry.metadata['name'], rel_sentry.charm)
             self.expose(rel_sentry.metadata['name'])
             self._sentries[rel_sentry.metadata['name']] = rel_sentry
+            rel_sentry.write_metadata()
             self.relationship_sentry = rel_sentry
 
         relations = copy.deepcopy(self.relations)
