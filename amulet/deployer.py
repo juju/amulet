@@ -178,6 +178,7 @@ class Deployment(object):
             self.add(rel_sentry.metadata['name'], rel_sentry.charm)
             self.expose(rel_sentry.metadata['name'])
             self._sentries[rel_sentry.metadata['name']] = rel_sentry
+            rel_sentry.write_metadata()
             self.relationship_sentry = rel_sentry
 
         relations = copy.deepcopy(self.relations)

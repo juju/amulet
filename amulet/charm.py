@@ -64,9 +64,9 @@ class Builder(object):
                 if not os.path.exists(hook_file):
                     os.symlink(self.hook, hook_file)
 
-        self._write_metadata()
+        self.write_metadata()
 
-    def _write_metadata(self):
+    def write_metadata(self):
         metadata = yaml.dump(self.metadata, default_flow_style=False)
         with open(os.path.join(self.charm, 'metadata.yaml'), 'w') as m:
             m.write(metadata)
