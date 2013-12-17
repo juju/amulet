@@ -122,7 +122,7 @@ class Deployment(object):
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
             self.deployed = True
-        except subprocess.CalledProcess:
+        except subprocess.CalledProcessError:
             raise
         finally:
             os.remove(s)
