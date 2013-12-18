@@ -15,6 +15,10 @@ from . import sentry
 from .charm import Builder
 
 
+_default_sentry_template = os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
+
+
 class Deployment(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
                  juju_deployer='juju-deployer',
@@ -31,8 +35,7 @@ class Deployment(object):
         self._sentries = {}
         self.use_sentries = sentries
         self.sentry_blacklist = []
-        self.sentry_template = sentry_template or os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
+        self.sentry_template = sentry_template or _default_sentry_template
         self.relationship_sentry = None
 
         self.deployer = juju_deployer
