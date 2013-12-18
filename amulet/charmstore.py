@@ -25,7 +25,7 @@ def get_relation(charm, relation):
     if not relations:
         raise Exception('No relations for charm')
 
-    for rel_type in c['charm']['relations']:
+    for rel_type in relations:
         for rel_name in relations[rel_type]:
             if rel_name == relation:
                 return rel_type, relations[rel_type][rel_name]['interface']
