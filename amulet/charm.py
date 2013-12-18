@@ -67,7 +67,7 @@ class Builder(object):
         self.write_metadata()
 
     def write_metadata(self):
-        metadata = yaml.dump(self.metadata, default_flow_style=False)
+        metadata = yaml.safe_dump(self.metadata, default_flow_style=False)
         with open(os.path.join(self.charm, 'metadata.yaml'), 'w') as m:
             m.write(metadata)
 
