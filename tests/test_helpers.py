@@ -2,6 +2,7 @@
 
 import os
 import unittest
+import sys
 import yaml
 
 from amulet import helpers
@@ -68,7 +69,7 @@ class HelpersTest(unittest.TestCase):
         mcheck_output.assert_called_once_with(['juju', 'version'])
 
     @patch('os.path.isfile')
-    @patch('builtins.open')
+    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
     def test_environments(self, mock_open, mock_exists):
         mock_open.return_value.__enter__ = lambda s: s
         mock_open.return_value.__exit__ = Mock()

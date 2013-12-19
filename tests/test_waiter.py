@@ -117,7 +117,7 @@ class WaiterTest(unittest.TestCase):
         pyjuju_status.side_effect = Exception
         self.assertEqual({}, waiter.state(juju_env='test'))
 
-    @patch.object(waiter, 'status')
+    @patch('amulet.helpers.JujuVersion')
     def test_status_no_juju_env(self, jver):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
 

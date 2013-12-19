@@ -55,8 +55,8 @@ def wait(*args, **kwargs):
     return True
 
 
-def raise_for_state(*args, juju_env):
-    status = state(*args, juju_env=juju_env)
+def raise_for_state(*args, **kwargs):
+    status = state(*args, **kwargs)
 
     for service in status:
         for unit in status[service]:
