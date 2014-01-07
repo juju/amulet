@@ -237,3 +237,86 @@ d.sentry.unit['mediawiki/0']
 ```
 
 Sentries provide several methods for which you can use to gather information about an environment. Again, please refer to the Developer Documentation for a complete list of endpoints available. The following are a few examples.
+
+# Examples
+
+Here are a few examples of Amulet tests
+
+## WordPress
+
+### tests/00-setup
+
+```bash
+#!/bin/bash
+
+sudo apt-get install install amulet python-requests
+```
+
+### tests/01-simple
+
+```python
+
+import os
+import amulet
+import requests
+
+from .lib import helper
+
+d = amulet.Deployment()
+d.add('mysql')
+d.add('wordpress')
+d.relate('mysql:db', 'wordpress:db')
+d.expose('wordpress')
+
+try:
+    # Create the deployment described above, give us 900 seconds to do it
+    d.setup(timeout=900)
+    # Setup will only make sure the services are deployed, related, and in a
+    # "started" state. We can employ the sentries to actually make sure there
+    # are no more hooks being executed on any of the nodes.
+    d.sentry.wait()
+except amulet.helpers.TimeoutError:
+    amulet.raise_status(amulet.SKIP, msg="Environment wasn't stood up in time")
+except:
+    # Something else has gone wrong, raise the error so we can see it and this
+    # will automatically "FAIL" the test.
+    raise
+
+# Shorten the names a little to make working with unit data easier
+wp_unit = d.sentry.unit['wordpress/0']
+mysql_unit = d.sentry.unit['mysql/0']
+
+# WordPress requires user input to "finish" a setup. This code is contained in
+# the helper.py file found in the lib directory. If it's not able to complete
+# the WordPress setup we need to quit the test, not as failed per se, but as a
+# SKIPed test since we can't accurately setup the environment
+try:
+    helper.finish_setup(wp_unit.info['public-address'], password='amulet-test')
+except:
+    amulet.raise_status(amulet.SKIP, msg="Unable to finish WordPress setup")
+
+home_page = requests.get('http://%s/' % wp_unit.info['public-address'])
+home_page.raise_for_status() # Make sure it's not 5XX error
+
+### tests/lib/helper.py
+
+```python
+
+import requests
+
+
+def finish_setup(unit, user='admin', password=None):
+    h = {'User-Agent': 'Mozilla/5.0 Gecko/20100101 Firefox/12.0',
+         'Content-Type': 'application/x-www-form-urlencoded',
+         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*',
+         'Accept-Encoding': 'gzip, deflate'}
+
+    r = requests.post('http://%s/wp-admin/install.php?step=2' % unit,
+                      headers=h, data={'weblog_title': 'Amulet Test %s' % unit,
+                      'user_name': user, 'admin_password': password,
+                      'admin_email': 'test@example.tld',
+                      'admin_password2': password,
+                      'Submit': 'Install WordPress'})
+
+    r.raise_for_status()
+```
