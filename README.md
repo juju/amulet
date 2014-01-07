@@ -297,6 +297,7 @@ except:
 
 home_page = requests.get('http://%s/' % wp_unit.info['public-address'])
 home_page.raise_for_status() # Make sure it's not 5XX error
+```
 
 ### tests/lib/helper.py
 
