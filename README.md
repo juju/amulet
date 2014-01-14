@@ -249,7 +249,7 @@ Here are a few examples of Amulet tests
 ```bash
 #!/bin/bash
 
-sudo apt-get install install amulet python-requests
+sudo apt-get install amulet python-requests
 ```
 
 ### tests/01-simple
