@@ -63,7 +63,7 @@ Though `deployer` is also available in the event you wish to execute any of the 
 
 ## Programmable API
 
-A limited number of functions are made available through a generic forking API. The following examples assume you're using a BOURNE Shell, though this syntax could be used from within other languauges with the same expected results.
+A limited number of functions are made available through a generic forking API. The following examples assume you're using a BOURNE Shell, though this syntax could be used from within other languages with the same expected results.
 
 Unlike the Python modules, only some of the functions of Amulet are available through this API, though efforts are being made to make the majority of the core functionality available.
 
@@ -71,7 +71,7 @@ This API follows the subcommand workflow, much like Git or Bazaar. Amulet makes 
 
     amulet deployment
 
-Depending on the syntax and worflow for each function you can expect to provide either additional sub-commands, command-line flags, or a combination of the two.
+Depending on the syntax and workflow for each function you can expect to provide either additional sub-commands, command-line flags, or a combination of the two.
 
 Please refer to the Developer Documentation for a list of supported subcommands and the syntax to use each.
 
@@ -99,7 +99,7 @@ d.configure('mediawiki', title="My Wiki", skin="Nostolgia")
 d.setup()
 ```
 
-That information is then translated to a Juju Deployer deployment file then, finally, `juju-deployer` executes the described setup. Amulet strives to insure it implements the correct version and syntax of Juju Deployer to avoid charm authors having to potentially intervene each time an update to juju-deployer is made.
+That information is then translated to a Juju Deployer deployment file then, finally, `juju-deployer` executes the described setup. Amulet strives to ensure it implements the correct version and syntax of Juju Deployer to avoid charm authors having to potentially intervene each time an update to juju-deployer is made.
 
 ~~Once an environment has been setup, `deployer` can still drive the environment outside of of juju-deployer. So the same commands (`add`, `relate`, `configure`,
 `expose`) will instead interact directly with the environment by using either the Juju API or the juju commands directly.~
