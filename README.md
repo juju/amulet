@@ -133,19 +133,19 @@ Private method invoked during `deployer_map`. Creates relation mapping.
 
 Private method invoked during `deployer_map`. Creates sentries for services.
 
-#### Deployment.configure(service, **options)
+#### Deployment.configure(service, options)
 
 Change configuration options for a service
 
 - `service` The service to configure
-- `**options` Seed with `key=val`
+- `options` Dict of options
 
 ```python
 import amulet
 
 d = amulet.Deployment()
 d.add('postgresql')
-d.configure('postgresql', autovacuum=True, cluster_name='cname')
+d.configure('postgresql', {'autovacuum': True, 'cluster_name': 'cname'})
 ```
 
 #### Deployment.deployer_map(services, relations)
