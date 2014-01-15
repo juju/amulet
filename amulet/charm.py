@@ -2,6 +2,7 @@
 import os
 import sys
 import yaml
+import glob
 import shutil
 import tempfile
 import subprocess
@@ -27,6 +28,8 @@ class Builder(object):
                              % ('-sub' if subordinate else ''))
         self.charm = os.path.join(d, name)
         shutil.copytree(self.template, self.charm, symlinks=True)
+        for h in glob.glob(os.path.join(self.charm, 'hooks', '*')):
+            os.chmod(h, 0o755)
 
         with open(os.devnull, 'w') as devnull:
             try:
