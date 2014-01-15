@@ -98,8 +98,8 @@ class DeployerTests(unittest.TestCase):
     def test_configure(self):
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
-        d.configure('wordpress', tuning='optimized')
-        d.configure('wordpress', **{'wp-content': 'f', 'port': 100})
+        d.configure('wordpress', {'tuning': 'optimized'})
+        d.configure('wordpress', {'wp-content': 'f', 'port': 100})
         self.assertEqual({'wordpress': {'branch': 'lp:charms/wordpress',
                          'options': {'tuning': 'optimized', 'wp-content': 'f',
                           'port': 100}}}, d.services)
@@ -107,7 +107,7 @@ class DeployerTests(unittest.TestCase):
     def test_configure_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.configure, 'wordpress',
-                          tuning='optimized')
+                          {'tuning': 'optimized'})
 
     def test_expose(self):
         d = Deployment(juju_env='gojuju')
@@ -123,7 +123,7 @@ class DeployerTests(unittest.TestCase):
     def test_schema(self):
         d = Deployment(juju_env='gojuju', sentries=False)
         d.add('mysql')
-        d.configure('mysql', tuning='fastest')
+        d.configure('mysql', {'tuning': 'fastest'})
         d.add('wordpress')
         d.relate('mysql:db', 'wordpress:db')
         schema = {'gojuju': {'services': {'mysql': {'branch':

@@ -98,7 +98,7 @@ class Deployment(object):
     def schema(self):
         return self.deployer_map(self.services, self.relations)
 
-    def configure(self, service, **options):
+    def configure(self, service, options):
         if service not in self.services:
             raise ValueError('Service has not yet been described')
         if not 'options' in self.services[service]:
