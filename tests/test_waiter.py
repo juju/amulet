@@ -6,13 +6,11 @@ import yaml
 from amulet import wait
 from amulet import waiter
 
-from amulet.waiter import StateError
 from amulet.helpers import TimeoutError, JujuVersion
 
 from .helper import JujuStatus
 
-from mock import patch, call, Mock, MagicMock
-from io import StringIO
+from mock import patch
 
 
 class WaiterTest(unittest.TestCase):
@@ -39,7 +37,7 @@ class WaiterTest(unittest.TestCase):
 
     @patch.object(waiter, '_get_pyjuju_status')
     def test_get_gojuju_status(self, mock_pyjuju_status):
-        status = waiter._get_gojuju_status('dummy')
+        waiter._get_gojuju_status('dummy')
         mock_pyjuju_status.assert_called_with('dummy')
 
     def test_parse_unit_state(self):

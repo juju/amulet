@@ -1,11 +1,10 @@
 
-import os
 import sys
 import yaml
 import subprocess
 from . import helpers
 
-from .helpers import JujuVersion, TimeoutError, default_environment, timeout
+from .helpers import TimeoutError, default_environment, timeout
 
 SUCESS_STATES = ['started']
 
@@ -33,7 +32,7 @@ def wait(*args, **kwargs):
         else:
             if 'JUJU_HOME' in os.environ:
                 kwargs['juju_env'] = default_environment(
-                                        os.environ['JUJU_HOME'])
+                    os.environ['JUJU_HOME'])
             else:
                 kwargs['juju_env'] = default_environment()
 
@@ -110,7 +109,7 @@ def status(juju_env=None):
             juju_status = _get_gojuju_status(juju_env)
     except TimeoutError:
         raise
-    except Exception as e:
+    except Exception:
         raise
 
     return juju_status
@@ -118,7 +117,6 @@ def status(juju_env=None):
 
 def state(*args, **kwargs):
     output = {}
-    version = helpers.JujuVersion()
 
     if not 'juju_env' in kwargs:
         raise KeyError('No juju_env set')

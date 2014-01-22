@@ -3,10 +3,9 @@ import os
 import json
 import cherrypy
 import json_rpc
-import subprocess
+
 
 class Module (object):
-
     @json_rpc.expose_anonymous_dont_jsonify
     def file(self, action=None, name=None):
         if not cherrypy.request.method in ['GET']:

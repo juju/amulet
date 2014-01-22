@@ -149,7 +149,6 @@ class Talisman(object):
                                                           rel_sentry_addr)
 
     def wait(self, timeout=300):
-        import time
         #for unit in self.unit:
         ready = False
         try:

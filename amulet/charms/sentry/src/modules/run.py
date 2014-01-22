@@ -1,8 +1,8 @@
 
-import json
 import cherrypy
 import json_rpc
 import subprocess
+
 
 class Module (object):
 
@@ -22,4 +22,3 @@ class Module (object):
             results = e.output
 
         return {'code': code, 'output': results.decode().strip()}
-

@@ -68,4 +68,3 @@ for unit_data_dir in glob.glob(os.path.join(other_data_dir, '*')):
 
             subprocess.call(['juju-log', ' '.join(rel_cmd)])
             subprocess.check_call(rel_cmd)
-

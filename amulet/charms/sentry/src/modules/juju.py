@@ -1,12 +1,9 @@
 
 import os
-import json
-import cherrypy
 import json_rpc
-import subprocess
+
 
 class Module (object):
-
     @json_rpc.expose_anonymous
     def juju(self):
         pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]

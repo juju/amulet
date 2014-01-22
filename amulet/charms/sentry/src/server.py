@@ -6,7 +6,6 @@ import json
 import os
 
 import api
-import json_rpc
 
 
 class Instance (api.API):

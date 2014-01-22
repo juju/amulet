@@ -4,11 +4,9 @@ import json
 import glob
 import json_rpc
 import cherrypy
-import subprocess
 
 
 class Module (object):
-
     @json_rpc.expose_anonymous
     def relations(self):
         if not cherrypy.request.method == "GET":

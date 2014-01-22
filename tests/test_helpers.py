@@ -1,14 +1,12 @@
 """Unit test for amulet.wait"""
 
-import os
 import unittest
 import sys
 import yaml
 
 from amulet import helpers
 
-from mock import patch, call, Mock, MagicMock
-from io import StringIO
+from mock import patch, Mock
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju

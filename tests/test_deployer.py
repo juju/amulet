@@ -2,12 +2,9 @@
 
 import os
 import unittest
-import yaml
 import json
 
 from amulet import Deployment
-
-from mock import patch, call, Mock, MagicMock
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju
@@ -126,10 +123,10 @@ class DeployerTests(unittest.TestCase):
         d.configure('mysql', {'tuning': 'fastest'})
         d.add('wordpress')
         d.relate('mysql:db', 'wordpress:db')
-        schema = {'gojuju': {'services': {'mysql': {'branch':
-                  'lp:charms/mysql', 'options': {'tuning': 'fastest'}},
-                  'wordpress': {'branch': 'lp:charms/wordpress'}}, 'series':
-                  'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
+        schema = {'gojuju': {'services': {'mysql': {
+            'branch': 'lp:charms/mysql', 'options': {'tuning': 'fastest'}},
+            'wordpress': {'branch': 'lp:charms/wordpress'}},
+            'series': 'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
         self.assertEqual(schema, d.schema())
 
     def test_build_sentries_writes_relationship_sentry_metadata(self):

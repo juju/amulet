@@ -1,7 +1,7 @@
 
 import os
 import re
-import yaml
+import sys
 import json
 import copy
 import subprocess
@@ -9,9 +9,9 @@ import tempfile
 
 from . import helpers
 from . import charmstore
-from . import waiter
 from . import sentry
 
+from . import wait
 from .charm import Builder
 
 
