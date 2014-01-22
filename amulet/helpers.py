@@ -89,6 +89,10 @@ def raise_status(code, msg=None):
 def default_environment(juju_home="~/.juju/"):
     juju_home = os.path.expanduser(juju_home)
     envs = environments(juju_home)
+
+    if 'JUJU_ENV' in os.environ:
+        return os.environ['JUJU_ENV']
+
     if os.path.exists(os.path.join(juju_home, 'current-environment')):
         cur_env = None
         with open(os.path.join(juju_home, 'current-environment')) as f:
