@@ -14,8 +14,7 @@ coverage:
 	@nosetests3 --nologcapture --with-coverage --cover-package=juju_tests
 
 lint:
-	@echo  Validating Python syntax...
-	@echo "`find -name "*.py" -exec pep8 {} \;`" && pep8 bin/amulet && echo OK
+	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' \) -print0 | xargs -r0 flake8
 
 check: test lint
 
