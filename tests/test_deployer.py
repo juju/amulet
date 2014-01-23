@@ -5,6 +5,7 @@ import unittest
 import json
 
 from amulet import Deployment
+from mock import patch
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju
@@ -40,8 +41,9 @@ class DeployerTests(unittest.TestCase):
     def test_load(self):
         d = Deployment(juju_env='gojuju')
         schema = '{"gojuju": {"series": "raring", "services": {"wordpress": \
-                  {"branch": "lp:charms/wordpress"}, "mysql": {"options": \
-                  {"tuning": "fastest"}, "branch": "lp:charms/mysql"}}, \
+                  {"branch": "lp:~charmers/charms/precise/wordpress/trunk"}, \
+                  "mysql": {"options": {"tuning": "fastest"}, \
+                  "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
         d.load(dmap)
@@ -52,7 +54,9 @@ class DeployerTests(unittest.TestCase):
     def test_add(self):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
-        self.assertEqual({'charm': {'branch': 'lp:charms/charm'}}, d.services)
+        self.assertEqual({'charm': {'branch':
+                                    'lp:~charmers/charms/precise/charm/trunk'}
+                          }, d.services)
 
     def test_add_branch(self):
         d = Deployment(juju_env='gojuju')
@@ -61,7 +65,10 @@ class DeployerTests(unittest.TestCase):
                          {'branch': 'lp:~foo/charms/precise/bar/trunk'}},
                          d.services)
 
-    def test_add_units(self):
+    @patch('amulet.deployer.charmworldlib.Charm')
+    def test_add_units(self, mcharm):
+        charm = mcharm.return_value
+        charm.code['location'] = 'lp:charms/charm'
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm', 'units': 2}},
@@ -97,9 +104,12 @@ class DeployerTests(unittest.TestCase):
         d.add('wordpress')
         d.configure('wordpress', {'tuning': 'optimized'})
         d.configure('wordpress', {'wp-content': 'f', 'port': 100})
-        self.assertEqual({'wordpress': {'branch': 'lp:charms/wordpress',
-                         'options': {'tuning': 'optimized', 'wp-content': 'f',
-                          'port': 100}}}, d.services)
+        self.assertEqual({'wordpress':
+                          {'branch':
+                           'lp:~charmers/charms/precise/wordpress/trunk',
+                           'options': {'tuning': 'optimized',
+                                       'wp-content': 'f',
+                                       'port': 100}}}, d.services)
 
     def test_configure_not_deployed(self):
         d = Deployment(juju_env='gojuju')
@@ -110,8 +120,10 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.expose('wordpress')
-        self.assertEqual({'wordpress': {'branch': 'lp:charms/wordpress',
-                          'expose': True}}, d.services)
+        self.assertEqual({'wordpress':
+                          {'branch':
+                           'lp:~charmers/charms/precise/wordpress/trunk',
+                           'expose': True}}, d.services)
 
     def test_expose_not_deployed(self):
         d = Deployment(juju_env='gojuju')
@@ -124,8 +136,10 @@ class DeployerTests(unittest.TestCase):
         d.add('wordpress')
         d.relate('mysql:db', 'wordpress:db')
         schema = {'gojuju': {'services': {'mysql': {
-            'branch': 'lp:charms/mysql', 'options': {'tuning': 'fastest'}},
-            'wordpress': {'branch': 'lp:charms/wordpress'}},
+            'branch': 'lp:~charmers/charms/precise/mysql/trunk',
+            'options': {'tuning': 'fastest'}},
+            'wordpress': {'branch':
+                          'lp:~charmers/charms/precise/wordpress/trunk'}},
             'series': 'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
         self.assertEqual(schema, d.schema())
 

@@ -6,6 +6,8 @@ import copy
 import subprocess
 import tempfile
 
+from charmworldlib.charm import Charm
+
 from . import helpers
 from . import charmstore
 from . import sentry
@@ -57,15 +59,17 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
-            if charm.startswith('cs:~'):
-                m = re.search('^cs:(~[\w-]+)/([\w-]+)', charm)
-                charm = 'lp:%s/charms/%s/%s/trunk' % (m.group(1), self.series,
-                                                      m.group(2))
-                charm_name = m.group(2)
+            if charm.startswith('lp:'):
+                charm_branch = charm
+                charm_name = None
             else:
-                charm_name = charm.split(':')[-1].split('/')[-1]
+                charm = Charm(charm)
+                charm_name = charm.name
+                charm_branch = charm.code_source['location']
         else:
             charm_name = service
+            charm = Charm(service)
+            charm_branch = charm.code_source['location']
 
         if 'JUJU_TEST_CHARM' in os.environ:
             pass  # Copy the current parent directory to temp and deploy that
@@ -73,7 +77,7 @@ class Deployment(object):
             if charm_name == self.charm_name:
                 charm = os.getcwd()
 
-        self.services[service] = {'branch': charm or 'lp:charms/%s' % service}
+        self.services[service] = {'branch': charm_branch}
         if units > 1:
             self.services[service]['units'] = units
 
