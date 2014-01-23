@@ -82,7 +82,7 @@ class Deployment(object):
 
         self.services[service] = {'branch': charm_branch}
         if units > 1:
-            self.services[service]['units'] = units
+            self.services[service]['num_units'] = units
 
     def relate(self, *args):
         if len(args) < 2:
