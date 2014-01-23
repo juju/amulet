@@ -78,8 +78,8 @@ class DeployerTests(unittest.TestCase):
         charm.code_source = {'location': 'lp:charms/charm'}
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
-        self.assertEqual({'charm': {'branch': 'lp:charms/charm', 'units': 2}},
-                         d.services)
+        self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'num_units': 2}}, d.services)
 
     @patch('amulet.deployer.Charm')
     def test_add_error(self, mcharm):
