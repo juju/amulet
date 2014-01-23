@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import copy
+import shutil
 import subprocess
 import tempfile
 
@@ -54,8 +55,6 @@ class Deployment(object):
             self.relations.append(rel)
 
     def add(self, service, charm=None, units=1):
-        # Do charm revision look ups?
-        # TODO: Do this with charmworldlib
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
@@ -217,6 +216,11 @@ class Deployment(object):
                     self.relate('%s:%s-%s'
                                 % (relation_sentry, rel_data[0],
                                    relation_name), rel)
+
+    def cleanup(self):
+        shutil.rmtree(self.deployer_dir)
+        for sentry in self._sentry:
+            shutil.rmtree(os.path.dirname(self._sentry[sentry].charm))
 
 
 def setup_parser(parent):
