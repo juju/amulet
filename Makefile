@@ -1,6 +1,6 @@
 PY := venv/bin/python
-PIP := venv/bin/pip
-NOSE := venv/bin/nosetests-3.3
+PIP := venv/local/bin/pip
+NOSE := venv/local/bin/nosetests-3.3
 
 # ###########
 # Build
@@ -45,7 +45,7 @@ $(NOSE):
 	$(PIP) install -r test-requires.txt
 
 .PHONY: test
-test: $(NOSE)
+test: venv develop $(NOSE)
 	@echo Testing Python 3...
 	@$(NOSE) --nologcapture
 
@@ -56,7 +56,7 @@ coverage:
 
 .PHONY: lint
 lint:
-	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' \) -print0 | xargs -r0 flake8
+	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' ! -iwholename '*venv/*' \) -print0 | xargs -r0 flake8
 
 .PHONY: check
 check: test lint
