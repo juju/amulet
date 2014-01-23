@@ -162,7 +162,6 @@ def state(*args, **kwargs):
 
 
 def setup_parser(parent):
-
     def wait_cmd(args):
         try:
             wait(*args.services, **vars(args))

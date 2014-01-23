@@ -1,5 +1,4 @@
 
-from . import waiter
 from .waiter import wait
 
 from .deployer import Deployment
