@@ -155,8 +155,7 @@ class DeployerTests(unittest.TestCase):
                               'lp:~charmers/charms/precise/wordpress/trunk'}
         mysqlmock.code_source = {'location':
                                  'lp:~charmers/charms/precise/mysql/trunk'}
-        drugs = [mysqlmock, wpmock]
-        mcharm.side_effect = drugs
+        mcharm.side_effect = [mysqlmock, wpmock]
         d = Deployment(juju_env='gojuju', sentries=False)
         d.add('mysql')
         d.configure('mysql', {'tuning': 'fastest'})
