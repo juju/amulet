@@ -5,7 +5,7 @@ import unittest
 import json
 
 from amulet import Deployment
-from mock import patch
+from mock import patch, MagicMock
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju
@@ -51,35 +51,44 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['gojuju']['relations'], d.relations)
         self.assertEqual(dmap['gojuju']['series'], d.series)
 
-    def test_add(self):
+    @patch('amulet.deployer.Charm')
+    def test_add(self, mcharm):
+        charm = mcharm.return_value
+        charm.code_source = {'location':
+                             'lp:~charmers/charms/precise/charm/trunk'}
         d = Deployment(juju_env='gojuju')
         d.add('charm')
         self.assertEqual({'charm': {'branch':
                                     'lp:~charmers/charms/precise/charm/trunk'}
                           }, d.services)
 
-    def test_add_branch(self):
+    @patch('amulet.deployer.Charm')
+    def test_add_branch(self, mcharm):
+        charm = mcharm.return_value
+        charm.code_source = {'location': 'lp:~foo/charms/precise/baz/trunk'}
         d = Deployment(juju_env='gojuju')
-        d.add('bar', 'cs:~foo/bar')
+        d.add('bar', 'cs:~foo/baz')
         self.assertEqual({'bar':
-                         {'branch': 'lp:~foo/charms/precise/bar/trunk'}},
+                         {'branch': 'lp:~foo/charms/precise/baz/trunk'}},
                          d.services)
 
-    @patch('amulet.deployer.charmworldlib.Charm')
+    @patch('amulet.deployer.Charm')
     def test_add_units(self, mcharm):
         charm = mcharm.return_value
-        charm.code['location'] = 'lp:charms/charm'
+        charm.code_source = {'location': 'lp:charms/charm'}
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm', 'units': 2}},
                          d.services)
 
-    def test_add_error(self):
+    @patch('amulet.deployer.Charm')
+    def test_add_error(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         self.assertRaises(ValueError, d.add, 'bar')
 
-    def test_relate(self):
+    @patch('amulet.deployer.Charm')
+    def test_relate(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         d.add('foo')
@@ -94,12 +103,17 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo', 'bar:a')
 
-    def test_relate_not_deployed(self):
+    @patch('amulet.deployer.Charm')
+    def test_relate_not_deployed(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('foo')
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:a')
 
-    def test_configure(self):
+    @patch('amulet.deployer.Charm')
+    def test_configure(self, mcharm):
+        charm = mcharm.return_value
+        charm.code_source = {'location':
+                             'lp:~charmers/charms/precise/wordpress/trunk'}
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.configure('wordpress', {'tuning': 'optimized'})
@@ -116,7 +130,11 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(ValueError, d.configure, 'wordpress',
                           {'tuning': 'optimized'})
 
-    def test_expose(self):
+    @patch('amulet.deployer.Charm')
+    def test_expose(self, mcharm):
+        charm = mcharm.return_value
+        charm.code_source = {'location':
+                             'lp:~charmers/charms/precise/wordpress/trunk'}
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.expose('wordpress')
@@ -129,7 +147,16 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.expose, 'wordpress')
 
-    def test_schema(self):
+    @patch('amulet.deployer.Charm')
+    def test_schema(self, mcharm):
+        wpmock = MagicMock()
+        mysqlmock = MagicMock()
+        wpmock.code_source = {'location':
+                              'lp:~charmers/charms/precise/wordpress/trunk'}
+        mysqlmock.code_source = {'location':
+                                 'lp:~charmers/charms/precise/mysql/trunk'}
+        drugs = [mysqlmock, wpmock]
+        mcharm.side_effect = drugs
         d = Deployment(juju_env='gojuju', sentries=False)
         d.add('mysql')
         d.configure('mysql', {'tuning': 'fastest'})
