@@ -12,3 +12,5 @@ dist
 /bin
 pyvenv.cfg
 venv
+.coverage
+dist
