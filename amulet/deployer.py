@@ -62,6 +62,9 @@ class Deployment(object):
             if charm.startswith('lp:'):
                 charm_branch = charm
                 charm_name = None
+            elif os.path.exists(charm):
+                charm_branch = charm
+                charm_name = os.path.basename(charm)
             else:
                 charm = Charm(charm)
                 charm_name = charm.name
