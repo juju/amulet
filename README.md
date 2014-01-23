@@ -39,8 +39,19 @@ Amulet is built with Python3, make sure it's installed prior to following these 
 To install Amulet from source, first get the source:
 
     git clone https://github.com/marcoceppi/amulet.git
+    cd amulet
+    make sysdeps
 
 Move in to the `amulet` directory and run `sudo python3 setup.py install`. You can also access the Python libraries; however, your `PYTHONPATH` will need to be amended in order for it to find the amulet directory.
+
+### Hacking
+
+Get the source and build your developmenmt environment with:
+
+    git clone https://github.com/marcoceppi/amulet.git
+    cd amulet
+    make sysdeps
+    make install
 
 # Usage
 

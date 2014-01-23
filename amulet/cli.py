@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-
-import os
 import argparse
 import inspect
 
