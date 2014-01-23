@@ -2,8 +2,8 @@ from setuptools import setup
 
 install_requires = [
     'requests',
-    'pycrypto',
     'urllib3',
+    'charmworldlib',
     'PyYAML'
 ]
 
