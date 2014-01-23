@@ -40,21 +40,29 @@ class Builder(object):
 
         os.chmod(os.path.join(self.charm, 'hooks', self.hook), 0o755)
 
-    def require(self, relation, interface, opts={}):
-        self._add_relation(relation, interface, 'requires', opts)
+    def require(self, relation, interface, opts=None):
+        if not opts:
+            opts = {}
+        opts['interface'] = interface
+        self._add_relation('requires', relation, opts)
 
-    def provide(self, relation, interface, opts={}):
-        self._add_relation(relation, interface, 'provides', opts)
+    def provide(self, relation, interface, opts=None):
+        if not opts:
+            opts = {}
+        opts['interface'] = interface
+        self._add_relation('provides', relation, opts)
 
-    def peer(self, relation, interface, opts={}):
-        self._add_relation(relation, interface, 'peers', opts)
+    def peer(self, relation, interface, opts=None):
+        if not opts:
+            opts = {}
+        opts['interface'] = interface
+        self._add_relation('peers', relation, opts)
 
-    def _add_relation(self, relation, interface, name, opts={}):
-        if not name in self.metadata:
-            self.metadata[name] = {}
+    def _add_relation(self, rel_type, relation, opts=None):
+        if not rel_type in self.metadata:
+            self.metadata[rel_type] = {}
 
-        self.metadata[name][relation] = opts
-        self.metadata[name][relation]['interface'] = interface
+        self.metadata[rel_type][relation] = opts
 
         # Build symlink to "global hooks" file
         if self.hook:
