@@ -25,7 +25,6 @@ amulet/charms/sentry/src/modules/juju.py
 amulet/charms/sentry/src/modules/relations.py
 amulet/charms/sentry/src/modules/run.py
 amulet/expect/__init__.py
-bin/amulet
 tests/__init__.py
 tests/helper.py
 tests/test_deployer.py
