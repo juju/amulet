@@ -77,7 +77,7 @@ class Deployment(object):
             pass  # Copy the current parent directory to temp and deploy that
         elif self.charm_name:
             if charm_name == self.charm_name:
-                charm = os.getcwd()
+                charm_branch = os.getcwd()
 
         self.services[service] = {'branch': charm_branch}
         if units > 1:
