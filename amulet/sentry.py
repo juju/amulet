@@ -1,8 +1,5 @@
 
-try:
-    import urllib3 as urllib
-except ImportError:
-    import urllib
+import urllib
 import requests
 
 from . import waiter
