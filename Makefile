@@ -1,6 +1,16 @@
 PY := venv/bin/python
-PIP := venv/local/bin/pip
-NOSE := venv/local/bin/nosetests-3.3
+# If the bin version does not exist look in venv/local/bin
+ifeq ($(wildcard venv/bin/pip),)
+  PIP = venv/local/bin/pip
+else
+  PIP = venv/bin/pip
+endif
+# If the bin version does not exist look in venv/local/bin
+ifeq ($(wildcard venv/bin/nosetests-3.3),)
+  NOSE = venv/local/bin/nosetests-3.3
+else
+  NOSE = venv/bin/nosetests-3.3
+endif
 
 # ###########
 # Build
@@ -41,11 +51,17 @@ sysdeps:
 # Develop
 # ###########
 
-$(NOSE):
+$(NOSE): $(PY)
 	$(PIP) install -r test-requires.txt
 
 .PHONY: test
-test: venv develop $(NOSE)
+test: $(NOSE)
+	make py3test
+
+# This is a private target used to get around finding nose in different paths.
+# Do not call this manually, just use make test.
+.PHONY: py3test
+py3test:
 	@echo Testing Python 3...
 	@$(NOSE) --nologcapture
 
