@@ -40,7 +40,8 @@ def run_bzr(args, working_dir, env=None):
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise
-        raise IOError("bzr not found, do you have Bazaar installed?")
+        raise OSError(strerror="bzr not found, do you have Bazaar installed?",
+                      errno=e.errno)
     out, err = p.communicate()
     if p.returncode:
         raise IOError("bzr command failed {!r}:\n"
