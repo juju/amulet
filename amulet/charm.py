@@ -1,32 +1,11 @@
 
-import errno
 import os
 import yaml
 import glob
 import shutil
 import tempfile
-import subprocess
 
-
-def _as_text(bytestring):
-    """Naive conversion of subprocess output to Python string"""
-    return bytestring.decode("utf-8", "replace")
-
-
-def run_bzr(args, working_dir, env=None):
-    """Run a Bazaar command in a subprocess"""
-    try:
-        p = subprocess.Popen(["bzr"] + args, cwd=working_dir, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        raise IOError("bzr not found, do you have Bazaar installed?")
-    out, err = p.communicate()
-    if p.returncode:
-        raise IOError("bzr command failed {!r}:\n"
-            "{}".format(args, _as_text(err)))
-    return _as_text(out)
+from .helpers import run_bzr, setup_bzr
 
 
 class Builder(object):
@@ -50,7 +29,7 @@ class Builder(object):
         for h in glob.glob(os.path.join(self.charm, 'hooks', '*')):
             os.chmod(h, 0o755)
 
-        run_bzr(["init"], self.charm)
+        setup_bzr(self.charm)
 
         if subordinate:
             self.require('juju-info', 'juju-info', {'scope': 'container'})
@@ -99,5 +78,5 @@ class Builder(object):
         self.save()
 
     def save(self):
-            run_bzr(["add", "."], self.charm)
-            run_bzr(["commit", "-m" "Checkpoint"], self.charm)
+        run_bzr(["add", "."], self.charm)
+        run_bzr(["commit", "-m" "Checkpoint"], self.charm)

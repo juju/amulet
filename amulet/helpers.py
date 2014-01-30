@@ -4,6 +4,7 @@ import sys
 import yaml
 import signal
 import subprocess
+import errno
 
 from contextlib import contextmanager
 
@@ -15,6 +16,37 @@ FAIL = 1
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
         self.value = value
+
+
+def _as_text(bytestring):
+    """Naive conversion of subprocess output to Python string"""
+    return bytestring.decode("utf-8", "replace")
+
+
+def setup_bzr(charm_dir):
+    try:
+        run_bzr(['whoami'], charm_dir)
+    except IOError:
+        run_bzr(['whoami', 'amulet@dummy-user.tld'], charm_dir)
+
+    run_bzr(["init"], charm_dir)
+
+
+def run_bzr(args, working_dir, env=None):
+    """Run a Bazaar command in a subprocess"""
+    try:
+        p = subprocess.Popen(["bzr"] + args, cwd=working_dir, env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+        raise OSError(strerror="bzr not found, do you have Bazaar installed?",
+                      errno=e.errno)
+    out, err = p.communicate()
+    if p.returncode:
+        raise IOError("bzr command failed {!r}:\n"
+                      "{}".format(args, _as_text(err)))
+    return _as_text(out)
 
 
 @contextmanager

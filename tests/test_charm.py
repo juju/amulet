@@ -26,10 +26,10 @@ class RunBzrTest(unittest.TestCase):
 
     def test_run_bzr_traceback(self):
         self.assertRaisesRegexp(Exception, "AssertionError: always fails",
-            run_bzr, ["assert-fail"], ".")
+                                run_bzr, ["assert-fail"], ".")
 
     def test_run_bzr_missing(self):
         env = os.environ.copy()
         env["PATH"] = ""
         self.assertRaisesRegexp(Exception, "bzr not found",
-            run_bzr, ["version"], ".", env=env)
+                                run_bzr, ["version"], ".", env=env)
