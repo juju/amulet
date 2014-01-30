@@ -240,7 +240,7 @@ def setup_parser(parent):
     def add_cmd(args):
         try:
             wait(*args.services, **vars(args))
-        except TimeoutError:
+        except helpers.TimeoutError:
             sys.stderr.write('Timeout criteria was met\n')
             sys.exit(124)
         except:

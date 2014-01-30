@@ -78,5 +78,5 @@ class Builder(object):
         self.save()
 
     def save(self):
-            run_bzr(["add", "."], self.charm)
-            run_bzr(["commit", "-m" "Checkpoint"], self.charm)
+        run_bzr(["add", "."], self.charm)
+        run_bzr(["commit", "-m" "Checkpoint"], self.charm)
