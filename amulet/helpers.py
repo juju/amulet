@@ -23,6 +23,15 @@ def _as_text(bytestring):
     return bytestring.decode("utf-8", "replace")
 
 
+def setup_bzr(charm_dir):
+    try:
+        run_bzr(['whoami'], charm_dir)
+    except IOError:
+        run_bzr(['whoami', 'amulet@dummy-user.tld'], charm_dir)
+
+    run_bzr(["init"], charm_dir)
+
+
 def run_bzr(args, working_dir, env=None):
     """Run a Bazaar command in a subprocess"""
     try:

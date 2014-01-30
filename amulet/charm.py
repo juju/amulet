@@ -29,7 +29,7 @@ class Builder(object):
         for h in glob.glob(os.path.join(self.charm, 'hooks', '*')):
             os.chmod(h, 0o755)
 
-        run_bzr(["init"], self.charm)
+        setup_bzr(self.charm)
 
         if subordinate:
             self.require('juju-info', 'juju-info', {'scope': 'container'})
