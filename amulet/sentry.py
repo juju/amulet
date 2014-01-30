@@ -1,11 +1,14 @@
 
-import urllib
 import requests
 
 from . import waiter
 from . import helpers
 from . import charmstore
 
+try:
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
 
 class SentryError(Exception):
     pass
@@ -44,7 +47,7 @@ class Sentry(object):
         return self._fetch(self.config['address'], endpoint, query, data)
 
     def _fetch(self, address, endpoint, query={}, data=None):
-        url = "%s/%s?%s" % (address, endpoint, urllib.parse.urlencode(query))
+        url = "%s/%s?%s" % (address, endpoint, urlencode(query))
         if data:
             return requests.post(url, data=data, verify=False)
         else:
