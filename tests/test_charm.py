@@ -31,5 +31,6 @@ class RunBzrTest(unittest.TestCase):
     def test_run_bzr_missing(self):
         env = os.environ.copy()
         env["PATH"] = ""
-        self.assertRaisesRegexp(Exception, "bzr not found",
-                                run_bzr, ["version"], ".", env=env)
+        self.assertRaisesRegexp(OSError, "bzr not found, do you have Bazaar "
+                                "installed?", run_bzr, ["version"], ".",
+                                env=env)

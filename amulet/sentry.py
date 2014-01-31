@@ -10,6 +10,7 @@ try:
 except ImportError:
     from urllib import urlencode
 
+
 class SentryError(Exception):
     pass
 
