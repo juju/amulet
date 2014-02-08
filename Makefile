@@ -45,7 +45,7 @@ lib/python*/site-packages/aumlet.egg-link:
 
 .PHONY: sysdeps
 sysdeps:
-	sudo apt-get install python3-dev
+	sudo apt-get $(shell tty -s || echo -y) install python3-dev
 
 # ###########
 # Develop
