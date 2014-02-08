@@ -5,7 +5,31 @@ import glob
 import shutil
 import tempfile
 
+from charmworldlib.charm import Charm
 from .helpers import run_bzr, setup_bzr
+
+
+def get_relation(charm, relation):
+    if os.path.exists(os.path.join(charm, 'metadata.yaml')):
+        relations = {}
+        with open(os.path.join(charm, 'metadata.yaml')) as m:
+            metadata = yaml.safe_load(m.read())
+        for key in ['requires', 'provides']:
+            if key in metadata:
+                relations[key] = metadata[key]
+    else:
+        c = Charm(charm)
+        relations = c.relations
+
+    if not relations:
+        raise Exception('No relations for charm')
+
+    for rel_type in relations:
+        for rel_name in relations[rel_type]:
+            if rel_name == relation:
+                return rel_type, relations[rel_type][rel_name]['interface']
+
+    return (None, None)
 
 
 class Builder(object):

@@ -2,7 +2,6 @@ from setuptools import setup
 
 install_requires = [
     'requests',
-    'urllib3',
     'charmworldlib',
     'PyYAML'
 ]
