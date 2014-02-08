@@ -68,7 +68,7 @@ py3test:
 .PHONY: coverage
 coverage:
 	@echo Testing with coverage...
-	@$(NOSE) --nologcapture --with-coverage --cover-package=juju_tests
+	@$(NOSE) --nologcapture --with-coverage --cover-package=amulet
 
 .PHONY: lint
 lint:
