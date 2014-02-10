@@ -1,4 +1,7 @@
 # Amulet, a testing harness
+
+[![Build Status](https://travis-ci.org/marcoceppi/amulet.png?branch=master)](https://travis-ci.org/marcoceppi/amulet) [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/marcoceppi/amulet/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
 Amulet is a set of tools designed to simplify the testing process for charm authors. Amulet aims to be a 
 
 - testing harness to ease the use of writing and running tests.
@@ -332,7 +335,3 @@ def finish_setup(unit, user='admin', password=None):
 
     r.raise_for_status()
 ```
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/marcoceppi/amulet/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-
