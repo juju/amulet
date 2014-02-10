@@ -42,7 +42,10 @@ class Sentry(object):
         raise NotImplemented()
 
     def juju_agent(self):
-        return self.query('/juju').json()
+        try:
+            return self.query('/juju').json()
+        except:
+            return None
 
     def query(self, endpoint, query={}, data=None):
         return self._fetch(self.config['address'], endpoint, query, data)
@@ -163,6 +166,9 @@ class Talisman(object):
                     for unit in self.unit.keys():
                         status = self.unit[unit].juju_agent()
                         # Check if we have a hook key and it's not None
+                        if not status:
+                            ready = False
+                            break
                         if 'hook' in status and status['hook']:
                             ready = False
                             break
