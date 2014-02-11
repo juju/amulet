@@ -3,6 +3,6 @@ python:
   - "2.7"
   - "3.3"
 install: "pip install -e .; pip install -r test-requires.txt; pip install python-coveralls"
-script: "nosetests --nologcapture --with-coverage"
+script: "nosetests --nologcapture --with-coverage --cover-package=amulet"
 after_success:
   - coveralls
