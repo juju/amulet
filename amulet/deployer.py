@@ -11,7 +11,7 @@ from . import helpers
 from . import sentry
 from . import wait
 
-from .charm import Builder, get_relation, Charm
+from .charm import Builder, LocalCharm, get_relation, Charm
 
 _default_sentry_template = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
@@ -24,6 +24,7 @@ class Deployment(object):
         self.services = {}
         self.relations = []
         self.interfaces = []
+        self.subordinates = []
         self.series = series
         self.deployed = False
         self.juju_env = juju_env or helpers.default_environment()
@@ -58,8 +59,9 @@ class Deployment(object):
                 charm_branch = charm
                 charm_name = None
             elif os.path.exists(charm):
-                charm_branch = charm
-                charm_name = os.path.basename(charm)
+                charm = LocalCharm(charm)
+                charm_branch = charm.code_source['location']
+                charm_name = os.path.basename(charm.code_source['location'])
             else:
                 charm = Charm(charm)
                 charm_name = charm.name
@@ -68,6 +70,15 @@ class Deployment(object):
             charm_name = service
             charm = Charm(service)
             charm_branch = charm.code_source['location']
+
+        if not isinstance(charm, str):
+            if charm.subordinate:
+                for type in ['provies', 'requires']:
+                    for relation in charm[type]:
+                        rel = charm[type][relation]
+                        if 'scope' in rel and rel['scope'] == 'container':
+                            self.subordinate.append('%s:%s' %
+                                                    (service, relation))
 
         if 'JUJU_TEST_CHARM' in os.environ:
             pass  # Copy the current parent directory to temp and deploy that

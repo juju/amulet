@@ -59,6 +59,7 @@ class Builder(object):
             self.require('juju-info', 'juju-info', {'scope': 'container'})
 
         os.chmod(os.path.join(self.charm, 'hooks', self.hook), 0o755)
+        self.write_metadata()
 
     def require(self, relation, interface, opts=None):
         if not opts:
@@ -103,4 +104,29 @@ class Builder(object):
 
     def save(self):
         run_bzr(["add", "."], self.charm)
-        run_bzr(["commit", "-m" "Checkpoint"], self.charm)
+        run_bzr(["commit", "-m", "Checkpoint"], self.charm)
+
+
+class LocalCharm(object):
+    def __init__(self, path):
+        if not os.path.exists(path):
+            raise Exception('Charm not found')
+
+        self.subordinate = False
+        self.code_source = self.source = {'location': path}
+        self._parse(os.path.join(path, 'metadata.yaml'))
+
+    def _parse(self, metadata):
+        with open(metadata) as f:
+            data = yaml.safe_load(f.read())
+
+        for key, val in data.items():
+            setattr(self, key, val)
+
+        self._raw = data
+
+    def __str__(self):
+        return yaml.dump(self_raw)
+
+    def _repr__(self):
+        return '<LocalCharm %s>' % self.code_source['location']
