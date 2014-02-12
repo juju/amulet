@@ -52,6 +52,7 @@ class Deployment(object):
             self.relations.append(rel)
 
     def add(self, service, charm=None, units=1):
+        subordinate = False
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
@@ -73,12 +74,17 @@ class Deployment(object):
 
         if not isinstance(charm, str):
             if charm.subordinate:
-                for type in ['provies', 'requires']:
-                    for relation in charm[type]:
-                        rel = charm[type][relation]
-                        if 'scope' in rel and rel['scope'] == 'container':
-                            self.subordinate.append('%s:%s' %
-                                                    (service, relation))
+                subordinate = True
+                for type in ['provides', 'requires']:
+                    try:
+                        rels = getattr(charm, type)
+                        for relation in rels:
+                            rel = rels[relation]
+                            if 'scope' in rel and rel['scope'] == 'container':
+                                self.subordinates.append('%s:%s' %
+                                                         (service, relation))
+                    except:
+                        pass
 
         if 'JUJU_TEST_CHARM' in os.environ:
             pass  # Copy the current parent directory to temp and deploy that
@@ -87,6 +93,8 @@ class Deployment(object):
                 charm_branch = os.getcwd()
 
         self.services[service] = {'branch': charm_branch}
+        if subordinate:
+            self.services[service]['_has_sentry'] = True
         if units > 1:
             self.services[service]['num_units'] = units
 
@@ -189,6 +197,7 @@ class Deployment(object):
         if not self.relationship_sentry:
             # Auto generate name
             rel_sentry = Builder('relation-sentry', self.sentry_template)
+            rel_sentry.write_metadata()
 
             self.add(rel_sentry.metadata['name'], rel_sentry.charm)
             self.expose(rel_sentry.metadata['name'])
@@ -200,6 +209,8 @@ class Deployment(object):
         relation_sentry = self.relationship_sentry.metadata['name']
         for relation in relations:
             for rel in relation:
+                if rel in self.subordinates:
+                    break
                 service, rel_name = rel.split(':')
                 if service in self._sentries:
                     break

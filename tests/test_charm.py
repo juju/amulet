@@ -17,7 +17,7 @@ class BuilderTest(unittest.TestCase):
             """A custom Python type yaml would serialise tagged"""
         self.assertIn("!!", yaml.dump(customstr("a")))
         builder = Builder(customstr("acharm"), _default_sentry_template)
-        self.assertRaises(yaml.YAMLError, builder.write_metadata)
+        self.assertRaises(yaml.representer.RepresenterError, builder.write_metadata)
 
 
 class RunBzrTest(unittest.TestCase):

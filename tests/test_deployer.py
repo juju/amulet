@@ -172,8 +172,6 @@ class DeployerTests(unittest.TestCase):
     def test_build_sentries_writes_relationship_sentry_metadata(self):
         """Even if there are no relations the metadata.yaml is written."""
         d = Deployment(juju_env='gojuju', sentries=True)
-
         d.build_sentries()
-
         self.assertIn('metadata.yaml',
                       os.listdir(d.relationship_sentry.charm))

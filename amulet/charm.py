@@ -59,7 +59,6 @@ class Builder(object):
             self.require('juju-info', 'juju-info', {'scope': 'container'})
 
         os.chmod(os.path.join(self.charm, 'hooks', self.hook), 0o755)
-        self.write_metadata()
 
     def require(self, relation, interface, opts=None):
         if not opts:
@@ -100,11 +99,11 @@ class Builder(object):
         with open(os.path.join(self.charm, 'metadata.yaml'), 'w') as m:
             m.write(metadata)
 
-        self.save()
+        self.save("Writing Metadata")
 
-    def save(self):
+    def save(self, msg="Checkpoint"):
         run_bzr(["add", "."], self.charm)
-        run_bzr(["commit", "-m", "Checkpoint"], self.charm)
+        run_bzr(["commit", "--unchanged", "-m", msg], self.charm)
 
 
 class LocalCharm(object):
