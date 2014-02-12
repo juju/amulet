@@ -54,6 +54,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.Charm')
     def test_add(self, mcharm):
         charm = mcharm.return_value
+        charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/charm/trunk'}
         d = Deployment(juju_env='gojuju')
@@ -65,6 +66,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.Charm')
     def test_add_branch(self, mcharm):
         charm = mcharm.return_value
+        charm.subordinate = False
         charm.code_source = {'location': 'lp:~foo/charms/precise/baz/trunk'}
         d = Deployment(juju_env='gojuju')
         d.add('bar', 'cs:~foo/baz')
@@ -75,6 +77,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.Charm')
     def test_add_units(self, mcharm):
         charm = mcharm.return_value
+        charm.subordinate = False
         charm.code_source = {'location': 'lp:charms/charm'}
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
@@ -112,6 +115,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.Charm')
     def test_configure(self, mcharm):
         charm = mcharm.return_value
+        charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/wordpress/trunk'}
         d = Deployment(juju_env='gojuju')
@@ -133,6 +137,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.Charm')
     def test_expose(self, mcharm):
         charm = mcharm.return_value
+        charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/wordpress/trunk'}
         d = Deployment(juju_env='gojuju')
@@ -151,8 +156,10 @@ class DeployerTests(unittest.TestCase):
     def test_schema(self, mcharm):
         wpmock = MagicMock()
         mysqlmock = MagicMock()
+        wpmock.subordinate = False
         wpmock.code_source = {'location':
                               'lp:~charmers/charms/precise/wordpress/trunk'}
+        mysqlmock.subordinate = False
         mysqlmock.code_source = {'location':
                                  'lp:~charmers/charms/precise/mysql/trunk'}
         mcharm.side_effect = [mysqlmock, wpmock]
