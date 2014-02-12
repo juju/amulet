@@ -1,5 +1,6 @@
 
 import os
+import sys
 import unittest
 import yaml
 
@@ -50,7 +51,7 @@ provides:
 
 class GetRelationTest(unittest.TestCase):
     @patch('os.path.exists')
-    @patch('builtins.open')
+    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
     def test_get_relation_local_charm(self, mock_open, mexists):
         mock_open.return_value.__enter__ = lambda s: s
         mock_open.return_value.__exit__ = Mock()
@@ -67,7 +68,7 @@ class GetRelationTest(unittest.TestCase):
         self.assertEqual(('requires', 'iname'), get_relation('c', 'relname'))
 
     @patch('os.path.exists')
-    @patch('builtins.open')
+    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
     def test_no_relations(self, mock_open, mexists):
         BAD_METADATA_YAML = '''
         name: charm-name
@@ -80,7 +81,7 @@ class GetRelationTest(unittest.TestCase):
         self.assertRaises(Exception, get_relation, '/path/2/bad/charm', 'noop')
 
     @patch('os.path.exists')
-    @patch('builtins.open')
+    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
     def test_no_match(self, mock_open, mexists):
         mock_open.return_value.__enter__ = lambda s: s
         mock_open.return_value.__exit__ = Mock()
