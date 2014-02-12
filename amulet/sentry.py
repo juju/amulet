@@ -3,7 +3,7 @@ import requests
 
 from . import waiter
 from . import helpers
-from . import charmstore
+from .charm import get_relation
 
 try:
     from urllib.parse import urlencode
@@ -104,7 +104,7 @@ class UnitSentry(Sentry):
     def relation(self, from_rel, to_rel):
         # Build possible mappings, find the map, produce results
         potential_rel = ['%s:%s' % (self.info['service'], from_rel), to_rel]
-        rel_data = charmstore.get_relation(self.info['service'], from_rel)
+        rel_data = get_relation(self.info['service'], from_rel)
         relations = ['-'.join([rel_data[0],
                      "-".join(potential_rel).replace(':', '_')])]
         potential_rel.reverse()

@@ -7,15 +7,11 @@ import shutil
 import subprocess
 import tempfile
 
-from charmworldlib.charm import Charm
-
 from . import helpers
-from . import charmstore
 from . import sentry
-
 from . import wait
-from .charm import Builder
 
+from .charm import Builder, get_relation, Charm
 
 _default_sentry_template = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
@@ -200,7 +196,7 @@ class Deployment(object):
                 relation_name = "-".join(relation).replace(':', '_')
                 self.relations.remove(relation)
                 try:
-                    interface = charmstore.get_relation(service, rel_name)[1]
+                    interface = get_relation(service, rel_name)[1]
                 except:
                     continue
 
@@ -212,7 +208,7 @@ class Deployment(object):
                                                  interface)
 
                 for rel in relation:
-                    rel_data = charmstore.get_relation(*rel.split(':'))
+                    rel_data = get_relation(*rel.split(':'))
                     self.relate('%s:%s-%s'
                                 % (relation_sentry, rel_data[0],
                                    relation_name), rel)
