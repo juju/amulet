@@ -25,7 +25,9 @@ class RunBzrTest(unittest.TestCase):
         out = run_bzr(["rocks"], ".")
         self.assertEquals(out, "It sure does!\n")
 
-    def test_run_bzr_traceback(self):
+    @patch('subprocess.Popen')
+    def test_run_bzr_traceback(self, mp):
+        mp.side_effect = [Exception("AssertionError: always fails")]
         self.assertRaisesRegexp(Exception, "AssertionError: always fails",
                                 run_bzr, ["assert-fail"], ".")
 
