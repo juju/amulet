@@ -51,46 +51,50 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['gojuju']['relations'], d.relations)
         self.assertEqual(dmap['gojuju']['series'], d.series)
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_add(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/charm/trunk'}
+        charm.url = 'cs:precise/charm'
+
         d = Deployment(juju_env='gojuju')
         d.add('charm')
-        self.assertEqual({'charm': {'branch':
-                                    'lp:~charmers/charms/precise/charm/trunk'}
-                          }, d.services)
+        self.assertEqual({'charm': {'charm': 'cs:precise/charm'}}, d.services)
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_add_branch(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location': 'lp:~foo/charms/precise/baz/trunk'}
+        charm.url = None
+
         d = Deployment(juju_env='gojuju')
         d.add('bar', 'cs:~foo/baz')
         self.assertEqual({'bar':
-                         {'branch': 'lp:~foo/charms/precise/baz/trunk'}},
+                          {'branch': 'lp:~foo/charms/precise/baz/trunk'}},
                          d.services)
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_add_units(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
                                     'num_units': 2}}, d.services)
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_add_error(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         self.assertRaises(ValueError, d.add, 'bar')
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_relate(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
@@ -106,25 +110,26 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo', 'bar:a')
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_relate_not_deployed(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('foo')
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:a')
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_configure(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/wordpress/trunk'}
+        charm.url = 'cs:precise/wordpress'
+
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.configure('wordpress', {'tuning': 'optimized'})
         d.configure('wordpress', {'wp-content': 'f', 'port': 100})
         self.assertEqual({'wordpress':
-                          {'branch':
-                           'lp:~charmers/charms/precise/wordpress/trunk',
+                          {'charm': 'cs:precise/wordpress',
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
                                        'port': 100}}}, d.services)
@@ -134,12 +139,14 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(ValueError, d.configure, 'wordpress',
                           {'tuning': 'optimized'})
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_expose(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location':
                              'lp:~charmers/charms/precise/wordpress/trunk'}
+        charm.url = None
+
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.expose('wordpress')
@@ -152,16 +159,19 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.expose, 'wordpress')
 
-    @patch('amulet.deployer.Charm')
+    @patch('amulet.deployer.get_charm')
     def test_schema(self, mcharm):
         wpmock = MagicMock()
         mysqlmock = MagicMock()
         wpmock.subordinate = False
         wpmock.code_source = {'location':
                               'lp:~charmers/charms/precise/wordpress/trunk'}
+        wpmock.url = None
         mysqlmock.subordinate = False
         mysqlmock.code_source = {'location':
                                  'lp:~charmers/charms/precise/mysql/trunk'}
+        mysqlmock.url = None
+
         mcharm.side_effect = [mysqlmock, wpmock]
         d = Deployment(juju_env='gojuju', sentries=False)
         d.add('mysql')

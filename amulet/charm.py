@@ -125,7 +125,7 @@ class LocalCharm(object):
         rel_keys = ['provides', 'requires']
         for key, val in metadata.items():
             if key in rel_keys:
-                self.relations[key] = value
+                self.relations[key] = val
 
             setattr(self, key, val)
 
@@ -154,7 +154,7 @@ class LaunchpadCharm(object):
         rel_keys = ['provides', 'requires']
         for key, val in metadata.items():
             if key in rel_keys:
-                self.relations[key] = value
+                self.relations[key] = val
 
             setattr(self, key, val)
 
