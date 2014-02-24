@@ -10,16 +10,8 @@ from .helpers import run_bzr, setup_bzr
 
 
 def get_relation(charm, relation):
-    if os.path.exists(os.path.join(charm, 'metadata.yaml')):
-        relations = {}
-        with open(os.path.join(charm, 'metadata.yaml')) as m:
-            metadata = yaml.safe_load(m.read())
-        for key in ['requires', 'provides']:
-            if key in metadata:
-                relations[key] = metadata[key]
-    else:
-        c = Charm(charm)
-        relations = c.relations
+    c = get_charm(charm)
+    relations = c.relations
 
     if not relations:
         raise Exception('No relations for charm')
@@ -106,26 +98,72 @@ class Builder(object):
         run_bzr(["commit", "--unchanged", "-m", msg], self.charm)
 
 
+def get_charm(charm_path):
+    if charm_path.startswith('cs:'):
+        return Charm(charm_path)
+    if charm_path.startswith('lp:'):
+        return LaunchpadCharm(charm_path)
+    if os.path.exists(os.path.expanduser(charm_path)):
+        return LocalCharm(charm_path)
+
+    return Charm(charm_path)
+
+
 class LocalCharm(object):
     def __init__(self, path):
         if not os.path.exists(path):
             raise Exception('Charm not found')
 
+        self.url = None
         self.subordinate = False
+        self.relations = {}
         self.code_source = self.source = {'location': path}
-        self._parse(os.path.join(path, 'metadata.yaml'))
+        self._raw = self._load(os.path.join(path, 'metadata.yaml'))
+        self._parse(self._raw)
 
     def _parse(self, metadata):
-        with open(metadata) as f:
-            data = yaml.safe_load(f.read())
+        rel_keys = ['provides', 'requires']
+        for key, val in metadata.items():
+            if key in rel_keys:
+                self.relations[key] = value
 
-        for key, val in data.items():
             setattr(self, key, val)
 
-        self._raw = data
+    def _load(self, metadata_path):
+        with open(metadata_path) as f:
+            data = yaml.safe_load(f.read())
+
+        return data
 
     def __str__(self):
-        return yaml.dump(self_raw)
+        return yaml.dump(self._raw)
 
     def _repr__(self):
         return '<LocalCharm %s>' % self.code_source['location']
+
+
+class LaunchpadCharm(object):
+    def __init__(self, branch):
+        self.url = None
+        self.subordinate = False
+        self.code_source = self.source = {'location': branch, 'type': 'bzr'}
+        self._raw = self._load(os.path.join(branch, 'metadata.yaml'))
+        self._parse(self._raw)
+
+    def _parse(self, metadata):
+        rel_keys = ['provides', 'requires']
+        for key, val in metadata.items():
+            if key in rel_keys:
+                self.relations[key] = value
+
+            setattr(self, key, val)
+
+    def _load(self, metadata_path):
+        mdata = run_bzr(['cat', metadata_path], None)
+        return yaml.safe_load(mdata)
+
+    def __str__(self):
+        return yaml.dump(self._raw)
+
+    def _repr__(self):
+        return '<LaunchpadCharm %s>' % self.code_source['location']

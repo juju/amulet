@@ -11,7 +11,7 @@ from . import helpers
 from . import sentry
 from . import wait
 
-from .charm import Builder, LocalCharm, get_relation, Charm
+from .charm import Builder, get_relation, get_charm
 
 _default_sentry_template = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
@@ -41,6 +41,9 @@ class Deployment(object):
         self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
         self.charm_cache = {}
 
+        if 'JUJU_TEST_CHARM' in os.environ:
+            self.charm_name = os.environ['JUJU_TEST_CHARM']
+
     def load(self, deploy_cfg):
         self.juju_env = list(deploy_cfg.keys())[0]
         schema = deploy_cfg[self.juju_env]
@@ -56,43 +59,30 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
-            if charm.startswith('lp:'):
-                charm_branch = charm
-                charm_name = None
-            elif os.path.exists(charm):
-                charm = LocalCharm(charm)
-                charm_branch = charm.code_source['location']
-                charm_name = os.path.basename(charm.code_source['location'])
-            else:
-                charm = Charm(charm)
-                charm_name = charm.name
-                charm_branch = charm.code_source['location']
+            charm = get_charm(charm)
         else:
-            charm_name = service
-            charm = Charm(service)
-            charm_branch = charm.code_source['location']
+            if service == self.charm_name:
+                charm = get_charm(os.getcwd())
+            else:
+                charm = get_charm(service)
 
-        if not isinstance(charm, str):
-            if charm.subordinate:
-                subordinate = True
-                for type in ['provides', 'requires']:
-                    try:
-                        rels = getattr(charm, type)
-                        for relation in rels:
-                            rel = rels[relation]
-                            if 'scope' in rel and rel['scope'] == 'container':
-                                self.subordinates.append('%s:%s' %
-                                                         (service, relation))
-                    except:
-                        pass
+        if charm.subordinate:
+            subordinate = True
+            for type in ['provides', 'requires']:
+                try:
+                    rels = getattr(charm, type)
+                    for relation in rels:
+                        rel = rels[relation]
+                        if 'scope' in rel and rel['scope'] == 'container':
+                            self.subordinates.append('%s:%s' %
+                                                     (service, relation))
+                except:
+                    pass
 
-        if 'JUJU_TEST_CHARM' in os.environ:
-            pass  # Copy the current parent directory to temp and deploy that
-        elif self.charm_name:
-            if charm_name == self.charm_name:
-                charm_branch = os.getcwd()
-
-        self.services[service] = {'branch': charm_branch}
+        if charm.url:
+            self.services[service] = {'charm': charm.url}
+        else:
+            self.services[service] = {'branch': charm.code_source['location']}
         if subordinate:
             self.services[service]['_has_sentry'] = True
         if units > 1:
