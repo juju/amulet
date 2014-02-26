@@ -48,6 +48,18 @@ def run_bzr(args, working_dir, env=None):
     return _as_text(out)
 
 
+def juju(args, env=None):
+    try:
+        p = subprocess.Popen(['juju'] + args, env=env)
+    except:
+        raise
+    out, err = p.communicate()
+    if p.returncode:
+        raise IOError("juju command failed {!r}:\n"
+                      "{}".format(args, _as_text(err)))
+    return _as_text(out)
+
+
 @contextmanager
 def timeout(seconds):
     def signal_handler(signum, frame):

@@ -5,9 +5,10 @@ import unittest
 import yaml
 
 from mock import patch, Mock
-from amulet.charm import Builder, run_bzr, get_relation
 from amulet.deployer import _default_sentry_template
-from charmworldlib.charm import Charm
+
+from amulet.charm import (Builder, run_bzr, get_relation, Charm, LocalCharm,
+                          LaunchpadCharm)
 
 
 class BuilderTest(unittest.TestCase):
@@ -17,7 +18,8 @@ class BuilderTest(unittest.TestCase):
             """A custom Python type yaml would serialise tagged"""
         self.assertIn("!!", yaml.dump(customstr("a")))
         builder = Builder(customstr("acharm"), _default_sentry_template)
-        self.assertRaises(yaml.representer.RepresenterError, builder.write_metadata)
+        self.assertRaises(yaml.representer.RepresenterError,
+                          builder.write_metadata)
 
 
 class RunBzrTest(unittest.TestCase):
@@ -90,3 +92,21 @@ class GetRelationTest(unittest.TestCase):
         mock_open.return_value.read.return_value = RAW_METADATA_YAML
         mexists.return_value = True
         self.assertEqual((None, None), get_relation('/path/charm', 'noop'))
+
+
+class LocalCharmTest(unittest.TestCase):
+    @patch('os.path.exists')
+    @patch.object(LocalCharm, '_load')
+    def test_parse(self, mlc_l, me):
+        me.return_value = True
+        mlc_l.return_value = {'name': 'test',
+                              'author': 'ohkay',
+                              'provides': {'rel': {'interface': 'test'}}}
+        c = LocalCharm('/path/to/test')
+        self.assertEqual('test', c.name)
+        mlc_l.assert_called_with('/path/to/test/metadata.yaml')
+
+
+class LaunchpadCharmTest(unittest.TestCase):
+
+    pass

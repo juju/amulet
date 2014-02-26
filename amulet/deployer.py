@@ -53,6 +53,8 @@ class Deployment(object):
             self.relations.append(rel)
 
     def add(self, service, charm=None, units=1):
+        if self.deployed:
+            raise NotImplemented('Environment already setup')
         subordinate = False
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
@@ -89,6 +91,8 @@ class Deployment(object):
     def relate(self, *args):
         if len(args) < 2:
             raise LookupError('Need at least two services:relation')
+        if self.deployed:
+            raise NotImplemented('Environment already setup')
 
         for srv_rel in args:
             if not ':' in srv_rel:
@@ -103,10 +107,24 @@ class Deployment(object):
         for srv in args:
             self.relations.append([first, srv])
 
+    def unrelate(self, *args):
+        if len(args) < 2:
+            raise LookupError('Need at least two services:relation')
+        if not self.deployed:
+            raise NotImplemented('Environment not setup yet')
+
+        return juju(['remove-relation'] + args)
+
     def schema(self):
         return self.deployer_map(self.services, self.relations)
 
     def configure(self, service, options):
+        if self.deployed:
+            opts = ['set', service]
+            for k, v in options.items():
+                opts.append("%s='%s'" % (k, v))
+            return juju(opts)
+
         if service not in self.services:
             raise ValueError('Service has not yet been described')
         if not 'options' in self.services[service]:
@@ -115,6 +133,9 @@ class Deployment(object):
             self.services[service]['options'].update(options)
 
     def expose(self, service):
+        if self.deployed:
+            return juju(['expose', service])
+
         if service not in self.services:
             raise ValueError('%s has not yet been described' % service)
         self.services[service]['expose'] = True
