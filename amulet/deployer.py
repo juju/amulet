@@ -1,15 +1,13 @@
 
 import os
-import sys
 import json
 import copy
 import shutil
 import subprocess
 import tempfile
 
-from . import helpers
-from . import sentry
-from . import wait
+from .helpers import default_environment, timeout, juju
+from .sentry import Talisman
 
 from .charm import Builder, get_relation, get_charm
 
@@ -27,7 +25,7 @@ class Deployment(object):
         self.subordinates = []
         self.series = series
         self.deployed = False
-        self.juju_env = juju_env or helpers.default_environment()
+        self.juju_env = juju_env or default_environment()
         self.charm_name = os.path.basename(os.getcwd())
 
         self.sentry = None
@@ -130,7 +128,7 @@ class Deployment(object):
             f.write(json.dumps(self.schema()))
 
         try:
-            with helpers.timeout(timeout):
+            with timeout(timeout):
                 subprocess.check_call([os.path.expanduser(self.deployer), '-W',
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
@@ -144,7 +142,7 @@ class Deployment(object):
             raise Exception('Deployment failed for an unknown reason')
 
         if self.deployed and self.use_sentries:
-            self.sentry = sentry.Talisman(self.services)
+            self.sentry = Talisman(self.services)
 
     def deployer_map(self, services, relations):
         if self.use_sentries:
@@ -229,52 +227,3 @@ class Deployment(object):
         shutil.rmtree(self.deployer_dir)
         for sentry in self._sentry:
             shutil.rmtree(os.path.dirname(self._sentry[sentry].charm))
-
-
-def setup_parser(parent):
-    def default_options(parser):
-        parser.add_argument('-d', '--deployment',
-                            help='unique name for deployment')
-        parser.add_argument('-e', '--environment', dest='juju_env',
-                            help="Juju environment")
-
-    def list_deployments():
-        if 'AMULET_DEPLOYER' in os.environ:
-            return dict([x.split(':') for x in
-                         os.environ['AMULET_DEPLOYER'].split(';')])
-        else:
-            return {}
-
-    def add_cmd(args):
-        try:
-            wait(*args.services, **vars(args))
-        except helpers.TimeoutError:
-            sys.stderr.write('Timeout criteria was met\n')
-            sys.exit(124)
-        except:
-            sys.stderr.write('Unexpected error occurred\n')
-            raise
-
-        sys.exit(0)
-
-    def relate_cmd(args):
-        pass
-
-    parser = parent.add_parser('deployer', help='build deployer schema')
-    deployer_subs = parser.add_subparsers()
-    add = deployer_subs.add_parser('add',
-                                   help='Add SERVICE to deployment')
-
-    default_options(add)
-    add.add_argument('-n', '--num-units', help='number of units to deploy',
-                     default=1, type=int)
-    add.add_argument('charm', nargs='?', help='charm to deploy')
-    add.add_argument('service', nargs='?', help='service name', default=None)
-    add.set_defaults(func=add_cmd)
-
-    relate = deployer_subs.add_parser('relate',
-                                      help='Relate two services to each other')
-
-    default_options(relate)
-    relate.add_argument('services', nargs=2, help='service:relation')
-    relate.set_defaults(func=relate_cmd)
