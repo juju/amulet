@@ -119,6 +119,14 @@ class Deployment(object):
         return self.deployer_map(self.services, self.relations)
 
     def configure(self, service, options):
+        for k, v in options.items():
+            include_token = 'include-base64://'
+            if type(v) is str and v.startswith(include_token):
+                v = v.replace(include_token, '')
+                with open(os.path.join(os.getcwd(), 'tests', val)) as f:
+                    v = base64.b64encode(f.read())
+                service['options'][k] = v
+
         if self.deployed:
             opts = ['set', service]
             for k, v in options.items():
