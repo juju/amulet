@@ -66,7 +66,7 @@ py3test:
 	@$(NOSE) --nologcapture
 
 .PHONY: coverage
-coverage:
+coverage: $(NOSE)
 	@echo Testing with coverage...
 	@$(NOSE) --nologcapture --with-coverage --cover-package=amulet
 
