@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import tempfile
 
-from .helpers import default_environment, timeout, juju
+from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 
 from .charm import Builder, get_relation, get_charm
@@ -157,7 +157,7 @@ class Deployment(object):
             f.write(json.dumps(self.schema()))
 
         try:
-            with timeout(timeout):
+            with unit_timesout(timeout):
                 subprocess.check_call([os.path.expanduser(self.deployer), '-W',
                                        '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
