@@ -7,6 +7,7 @@ omit =
     *six*
     *requests*
     *chardet*
+    *charmworldlib*
 
 [report]
 exclude_lines =
