@@ -96,6 +96,10 @@ class DeployerTests(unittest.TestCase):
 
     @patch('amulet.deployer.get_charm')
     def test_relate(self, mcharm):
+        a = mcharm.return_value
+        a.provides = {'f': {'interface': 'test'}}
+        a.requires = {'b': {'interface': 'test'}}
+
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         d.add('foo')
@@ -111,9 +115,15 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(ValueError, d.relate, 'foo', 'bar:a')
 
     @patch('amulet.deployer.get_charm')
-    def test_relate_not_deployed(self, mcharm):
+    def test_relate_relation_nonexist(self, mcharm):
         d = Deployment(juju_env='gojuju')
+        d.add('bar')
         d.add('foo')
+
+        self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:b')
+
+    def test_relate_not_deployed(self):
+        d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:a')
 
     @patch('amulet.deployer.get_charm')
@@ -166,10 +176,12 @@ class DeployerTests(unittest.TestCase):
         wpmock.subordinate = False
         wpmock.code_source = {'location':
                               'lp:~charmers/charms/precise/wordpress/trunk'}
+        wpmock.requires = {'db': {'interface': 'mysql'}}
         wpmock.url = None
         mysqlmock.subordinate = False
         mysqlmock.code_source = {'location':
                                  'lp:~charmers/charms/precise/mysql/trunk'}
+        mysqlmock.provides = {'db': {'interface': 'mysql'}}
         mysqlmock.url = None
 
         mcharm.side_effect = [mysqlmock, wpmock]

@@ -60,18 +60,18 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
         if charm:
-            charm = get_charm(charm)
+            c = get_charm(charm)
         else:
             if service == self.charm_name:
-                charm = get_charm(os.getcwd())
+                c = get_charm(os.getcwd())
             else:
-                charm = get_charm(service)
+                c = get_charm(service)
 
-        if charm.subordinate:
+        if c.subordinate:
             subordinate = True
-            for type in ['provides', 'requires']:
+            for rtype in ['provides', 'requires']:
                 try:
-                    rels = getattr(charm, type)
+                    rels = getattr(c, rtype)
                     for relation in rels:
                         rel = rels[relation]
                         if 'scope' in rel and rel['scope'] == 'container':
@@ -80,14 +80,16 @@ class Deployment(object):
                 except:
                     pass
 
-        if charm.url:
-            self.services[service] = {'charm': charm.url}
+        if c.url:
+            self.services[service] = {'charm': c.url}
         else:
-            self.services[service] = {'branch': charm.code_source['location']}
+            self.services[service] = {'branch': c.code_source['location']}
         if subordinate:
             self.services[service]['_has_sentry'] = True
         if units > 1:
             self.services[service]['num_units'] = units
+
+        self.charm_cache[service] = c
 
     def relate(self, *args):
         if len(args) < 2:
@@ -100,9 +102,14 @@ class Deployment(object):
                 raise ValueError('All relations must be explicit, ' +
                                  'service:relation')
 
-            service, relation = srv_rel.split(':')
-            if service not in self.services:
+            srv, rel = srv_rel.split(':')
+            if srv not in self.services:
                 raise ValueError('Can not relate, service not deployed yet')
+
+            c = self.charm_cache[srv]
+            if rel not in list(c.provides.keys()) + list(c.requires.keys()):
+                raise ValueError('%s does not exist for %s' % (rel, srv))
+
         args = list(args)
         first = args.pop(0)
         for srv in args:
@@ -239,6 +246,10 @@ class Deployment(object):
                     interface = get_relation(service, rel_name)[1]
                 except:
                     continue
+
+                if not interface:
+                    raise Exception('Unable to detect interface for %s on %s'
+                                    % (service, rel_name))
 
                 self.relationship_sentry.provide('%s-%s' %
                                                  ('requires', relation_name),
