@@ -120,6 +120,8 @@ class LocalCharm(object):
         self.code_source = self.source = {'location': path}
         self._raw = self._load(os.path.join(path, 'metadata.yaml'))
         self._parse(self._raw)
+        self.provides = {}
+        self.requires = {}
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
@@ -149,6 +151,9 @@ class LaunchpadCharm(object):
         self.code_source = self.source = {'location': branch, 'type': 'bzr'}
         self._raw = self._load(os.path.join(branch, 'metadata.yaml'))
         self._parse(self._raw)
+        self.relations = {}
+        self.provides = {}
+        self.requires = {}
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
