@@ -2,6 +2,7 @@
 import os
 import json
 import copy
+import base64
 import shutil
 import subprocess
 import tempfile
@@ -123,7 +124,7 @@ class Deployment(object):
             include_token = 'include-base64://'
             if type(v) is str and v.startswith(include_token):
                 v = v.replace(include_token, '')
-                with open(os.path.join(os.getcwd(), 'tests', val)) as f:
+                with open(os.path.join(os.getcwd(), 'tests', v)) as f:
                     v = base64.b64encode(f.read())
                 service['options'][k] = v
 
