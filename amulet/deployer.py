@@ -107,7 +107,8 @@ class Deployment(object):
                 raise ValueError('Can not relate, service not deployed yet')
 
             c = self.charm_cache[srv]
-            if rel not in list(c.provides.keys()) + list(c.requires.keys()):
+            if rel not in list(c.provides.keys()) + list(c.requires.keys()) \
+                    + ['juju-info']:
                 raise ValueError('%s does not exist for %s' % (rel, srv))
 
         args = list(args)
