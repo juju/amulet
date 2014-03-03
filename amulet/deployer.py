@@ -114,7 +114,10 @@ class Deployment(object):
         args = list(args)
         first = args.pop(0)
         for srv in args:
-            self.relations.append([first, srv])
+            self._relate(first, srv)
+
+    def _relate(self, a, b):
+        self.relations.append([a, b])
 
     def unrelate(self, *args):
         if len(args) < 2:
@@ -213,7 +216,7 @@ class Deployment(object):
                 sentry = Builder('%s-sentry' % service, self.sentry_template,
                                  subordinate=True)
                 self.add(sentry.metadata['name'], sentry.charm)
-                self.relate('%s:juju-info' % service, '%s:juju-info'
+                self._relate('%s:juju-info' % service, '%s:juju-info'
                             % sentry.metadata['name'])
                 self.expose(sentry.metadata['name'])
                 self._sentries[sentry.metadata['name']] = sentry
@@ -261,9 +264,9 @@ class Deployment(object):
 
                 for rel in relation:
                     rel_data = get_relation(*rel.split(':'))
-                    self.relate('%s:%s-%s'
-                                % (relation_sentry, rel_data[0],
-                                   relation_name), rel)
+                    self._relate('%s:%s-%s'
+                                 % (relation_sentry, rel_data[0],
+                                    relation_name), rel)
 
     def cleanup(self):
         shutil.rmtree(self.deployer_dir)
