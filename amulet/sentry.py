@@ -166,7 +166,7 @@ class Talisman(object):
                     for unit in self.unit.keys():
                         status = self.unit[unit].juju_agent()
                         # Check if we have a hook key and it's not None
-                        if not status:
+                        if status is None:
                             ready = False
                             break
                         if 'hook' in status and status['hook']:
