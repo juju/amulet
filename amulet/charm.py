@@ -111,17 +111,17 @@ def get_charm(charm_path):
 
 class LocalCharm(object):
     def __init__(self, path):
-        if not os.path.exists(path):
+        if not os.path.exists(os.path.join(path, 'metadata.yaml')):
             raise Exception('Charm not found')
 
         self.url = None
         self.subordinate = False
         self.relations = {}
+        self.provides = {}
+        self.requires = {}
         self.code_source = self.source = {'location': path}
         self._raw = self._load(os.path.join(path, 'metadata.yaml'))
         self._parse(self._raw)
-        self.provides = {}
-        self.requires = {}
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
