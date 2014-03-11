@@ -4,11 +4,18 @@ import sys
 import unittest
 import yaml
 
-from mock import patch, Mock
+from mock import patch, Mock, call
 from amulet.deployer import _default_sentry_template
 
-from amulet.charm import (Builder, run_bzr, get_relation, Charm, LocalCharm,
-                          LaunchpadCharm)
+from amulet.charm import (
+    Builder,
+    run_bzr,
+    get_relation,
+    Charm,
+    LocalCharm,
+    LaunchpadCharm,
+    setup_bzr,
+)
 
 
 class BuilderTest(unittest.TestCase):
@@ -33,12 +40,29 @@ class RunBzrTest(unittest.TestCase):
         self.assertRaisesRegexp(Exception, "AssertionError: always fails",
                                 run_bzr, ["assert-fail"], ".")
 
+    @patch('subprocess.Popen')
+    def test_run_bzr_oserror(self, mp):
+        mp.side_effect = [OSError(1, "Command failed")]
+        self.assertRaisesRegexp(OSError, "Command failed",
+                                run_bzr, ["assert-fail"], ".")
+
     def test_run_bzr_missing(self):
         env = os.environ.copy()
         env["PATH"] = ""
         self.assertRaisesRegexp(OSError, "bzr not found, do you have Bazaar "
                                 "installed?", run_bzr, ["version"], ".",
                                 env=env)
+
+
+class SetupBzrTest(unittest.TestCase):
+    @patch('amulet.helpers.run_bzr')
+    def test_setup_bzr(self, mp):
+        mp.side_effect = [IOError("bzr command failed!"), None, None]
+        setup_bzr('/path')
+        self.assertEqual(mp.call_args_list,
+                         [call(['whoami'], '/path'),
+                          call(['whoami', 'amulet@dummy-user.tld'], '/path'),
+                          call(['init'], '/path')])
 
 
 RAW_METADATA_YAML = '''
@@ -108,5 +132,4 @@ class LocalCharmTest(unittest.TestCase):
 
 
 class LaunchpadCharmTest(unittest.TestCase):
-
     pass
