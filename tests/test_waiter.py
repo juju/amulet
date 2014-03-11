@@ -178,3 +178,30 @@ class WaitTest(unittest.TestCase):
                                      TimeoutError]
 
         self.assertRaises(TimeoutError, wait, juju_env='dummy')
+
+
+class StatusTest(unittest.TestCase):
+    @patch('amulet.waiter._get_gojuju_status')
+    def test_status_go(self, mpy):
+        waiter.status('gojuju')
+        mpy.assert_called_with('gojuju')
+
+    @patch('amulet.waiter._get_pyjuju_status')
+    @patch('amulet.waiter.JujuVersion')
+    def test_status_py(self, mj, mpy):
+        mj.side_effect = [JujuVersion(0, 7, 0, False)]
+        waiter.status('pyjuju')
+        mpy.assert_called_with('pyjuju')
+
+    def test_status_noenv(self):
+        self.assertRaises(Exception, waiter.status)
+
+    @patch('amulet.waiter._get_gojuju_status')
+    def test_wait_timeout(self, mpy):
+        mpy.side_effect = [TimeoutError]
+        self.assertRaises(TimeoutError, waiter.status, 'godummy')
+
+    @patch('amulet.waiter._get_gojuju_status')
+    def test_wait_exception(self, mpy):
+        mpy.side_effect = [Exception]
+        self.assertRaises(Exception, waiter.status, 'godummy')

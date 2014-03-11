@@ -113,7 +113,7 @@ def status(juju_env=None):
             juju_status = _get_gojuju_status(juju_env)
     except TimeoutError:
         raise
-    except Exception:
+    except:
         raise
 
     return juju_status
