@@ -1,14 +1,3 @@
-[run]
-omit =
-    *yaml*
-    *mock*
-    *nose*
-    *urllib3*
-    *six*
-    *requests*
-    *chardet*
-    *charmworldlib*
-
 [report]
 exclude_lines =
     def setup_parser
