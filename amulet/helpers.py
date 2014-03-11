@@ -57,7 +57,7 @@ def juju(args, env=None):
     if p.returncode:
         raise IOError("juju command failed {!r}:\n"
                       "{}".format(args, _as_text(err)))
-    return _as_text(out)
+    return _as_text(out) if out else None
 
 
 @contextmanager
