@@ -24,7 +24,7 @@ $(PY):
 	python3 -m venv venv
 	curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | $(PY)
 	curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | $(PY)
-	rm setuptools*.tar.gz
+	rm setuptools*.zip
 
 .PHONY: clean_all
 clean_all: clean clean_venv
