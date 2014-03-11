@@ -8,7 +8,8 @@ from amulet.helpers import (
     JujuVersion,
     environments,
     default_environment,
-    juju
+    juju,
+    raise_status,
 )
 
 from mock import patch, Mock
@@ -125,3 +126,17 @@ class JujuTest(unittest.TestCase):
     def test_juju_oserror(self, mp):
         mp.side_effect = [OSError(1, 'Command Failed')]
         self.assertRaisesRegexp(OSError, 'Command Failed', juju, ['version'])
+
+
+class RaiseStatusTest(unittest.TestCase):
+    @patch('amulet.helpers.sys.exit')
+    def test_raise_status(self, me):
+        raise_status(0)
+        me.assert_called_with(0)
+
+    @patch('amulet.helpers.sys.exit')
+    @patch('builtins.print')
+    def test_raise_status_msg(self, mp, me):
+        raise_status(100, 'Hello World')
+        mp.assert_called_with('Hello World')
+        me.assert_called_with(100)
