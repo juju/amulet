@@ -55,7 +55,7 @@ class Deployment(object):
 
     def add(self, service, charm=None, units=1):
         if self.deployed:
-            raise NotImplemented('Environment already setup')
+            raise NotImplementedError('Environment already setup')
         subordinate = False
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
@@ -95,7 +95,7 @@ class Deployment(object):
         if len(args) < 2:
             raise LookupError('Need at least two services:relation')
         if self.deployed:
-            raise NotImplemented('Environment already setup')
+            raise NotImplementedError('Environment already setup')
 
         for srv_rel in args:
             if not ':' in srv_rel:
@@ -123,9 +123,9 @@ class Deployment(object):
         if len(args) < 2:
             raise LookupError('Need at least two services:relation')
         if not self.deployed:
-            raise NotImplemented('Environment not setup yet')
+            raise NotImplementedError('Environment not setup yet')
 
-        return juju(['remove-relation'] + args)
+        return juju(['remove-relation'] + [r for r in args])
 
     def schema(self):
         return self.deployer_map(self.services, self.relations)

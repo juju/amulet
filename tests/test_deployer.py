@@ -204,3 +204,33 @@ class DeployerTests(unittest.TestCase):
         d.build_sentries()
         self.assertIn('metadata.yaml',
                       os.listdir(d.relationship_sentry.charm))
+
+    @patch.dict('os.environ', {'JUJU_TEST_CHARM': 'charmbook'})
+    def test_juju_test_charm(self):
+        d = Deployment(juju_env='gogo')
+        self.assertEqual('charmbook', d.charm_name)
+
+    def test_add_post_deploy(self):
+        d = Deployment(juju_env='gogo')
+        d.deployed = True
+        self.assertRaises(NotImplementedError, d.add, 'mysql')
+
+    def test_relate_post_deploy(self):
+        d = Deployment(juju_env='gogo')
+        d.deployed = True
+        self.assertRaises(NotImplementedError, d.relate, 'mysql:db', 'wordpress:db')
+
+    def test_unrelate_not_enough(self):
+        d = Deployment(juju_env='gogo')
+        self.assertRaises(LookupError, d.unrelate, 'mysql')
+
+    @patch('amulet.deployer.juju')
+    def test_unrelate(self, mj):
+        d = Deployment(juju_env='gogo')
+        d.deployed = True
+        d.unrelate('mysql', 'charm')
+        mj.assert_called_with(['remove-relation', 'mysql', 'charm'])
+
+    def test_unrelate_post_deploy(self):
+        d = Deployment(juju_env='gogo')
+        self.assertRaises(NotImplementedError, d.unrelate, 'mysql:db', 'wordpress:db')
