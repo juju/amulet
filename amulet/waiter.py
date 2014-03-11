@@ -1,10 +1,14 @@
 
 import sys
 import yaml
-import subprocess
-from . import helpers
 
-from .helpers import TimeoutError, default_environment, timeout
+from .helpers import (
+    TimeoutError,
+    default_environment,
+    timeout,
+    juju,
+    JujuVersion,
+)
 
 SUCESS_STATES = ['started']
 
@@ -75,12 +79,12 @@ def _get_gojuju_status(environment=None):
 
 # Move these to another module?
 def _get_pyjuju_status(environment=None):
-    cmd = ['juju', 'status']
+    cmd = ['status']
     if environment:
         cmd.extend(['-e', environment])
 
     try:
-        status_yml = subprocess.check_output(cmd)
+        status_yml = juju(cmd)
     except TimeoutError:
         raise
     except:
@@ -97,7 +101,7 @@ def get_state(data):
 
 
 def status(juju_env=None):
-    version = helpers.JujuVersion()
+    version = JujuVersion()
 
     if not juju_env:
         raise KeyError('No juju_env set')

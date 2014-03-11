@@ -7,14 +7,13 @@ from amulet import wait
 from amulet import waiter
 
 from amulet.helpers import TimeoutError, JujuVersion
-
 from .helper import JujuStatus
 
 from mock import patch
 
 
 class WaiterTest(unittest.TestCase):
-    @patch('subprocess.check_output')
+    @patch('amulet.waiter.juju')
     def test_get_pyjuju_status(self, mock_check_output):
         mstatus = JujuStatus('juju')
         mstatus.add('wordpress')
@@ -23,16 +22,16 @@ class WaiterTest(unittest.TestCase):
 
         status = waiter._get_pyjuju_status('dummy')
         self.assertEqual(yaml.safe_load(str(mstatus)), status)
-        mock_check_output.assert_called_with(['juju', 'status', '-e', 'dummy'])
+        mock_check_output.assert_called_with(['status', '-e', 'dummy'])
 
-    @patch('subprocess.check_output')
-    def test_get_pyjuju_status_timeout(self, mock_check_output):
-        mock_check_output.side_effect = [TimeoutError]
+    @patch('amulet.waiter.juju')
+    def test_get_pyjuju_status_timeout(self, mj):
+        mj.side_effect = [TimeoutError]
         self.assertRaises(TimeoutError, waiter._get_pyjuju_status)
 
-    @patch('subprocess.check_output')
-    def test_get_pyjuju_status_error(self, mock_check_output):
-        mock_check_output.side_effect = [Exception('Non-zero exit')]
+    @patch('amulet.waiter.juju')
+    def test_get_pyjuju_status_error(self, mj):
+        mj.side_effect = [OSError(0, 'Non-zero exit')]
         self.assertRaises(Exception, waiter._get_pyjuju_status)
 
     @patch.object(waiter, '_get_pyjuju_status')
