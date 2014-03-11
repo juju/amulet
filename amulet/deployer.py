@@ -216,8 +216,8 @@ class Deployment(object):
                 sentry = Builder('%s-sentry' % service, self.sentry_template,
                                  subordinate=True)
                 self.add(sentry.metadata['name'], sentry.charm)
-                self._relate('%s:juju-info' % service, '%s:juju-info'
-                            % sentry.metadata['name'])
+                self._relate('%s:juju-info' % service,
+                             '%s:juju-info' % sentry.metadata['name'])
                 self.expose(sentry.metadata['name'])
                 self._sentries[sentry.metadata['name']] = sentry
                 self.services[service]['_has_sentry'] = True
