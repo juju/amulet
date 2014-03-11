@@ -119,5 +119,9 @@ class HelpersTest(unittest.TestCase):
 
 class JujuTest(unittest.TestCase):
     def test_juju(self):
-        v = JujuVersion()
-        self.assertEqual(str(v), juju(['version']).split('-')[0])
+        self.assertEqual(str(JujuVersion()), juju(['version']).split('-')[0])
+
+    @patch('amulet.helpers.subprocess.Popen')
+    def test_juju_oserror(self, mp):
+        mp.side_effect = [OSError(1, 'Command Failed')]
+        self.assertRaisesRegexp(OSError, 'Command Failed', juju, ['version'])
