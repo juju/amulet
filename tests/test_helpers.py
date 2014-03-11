@@ -135,7 +135,7 @@ class RaiseStatusTest(unittest.TestCase):
         me.assert_called_with(0)
 
     @patch('amulet.helpers.sys.exit')
-    @patch('builtins.print')
+    @patch('builtins.print' if sys.version_info > (3,) else '__builtin__.print')
     def test_raise_status_msg(self, mp, me):
         raise_status(100, 'Hello World')
         mp.assert_called_with('Hello World')
