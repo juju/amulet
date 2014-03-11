@@ -8,6 +8,7 @@ from amulet.helpers import (
     JujuVersion,
     environments,
     default_environment,
+    juju
 )
 
 from mock import patch, Mock
@@ -34,9 +35,9 @@ environments:
 
 
 class HelpersTest(unittest.TestCase):
-    @patch('subprocess.check_output')
-    def test_jujuversion_go(self, mock_check_output):
-        mock_check_output.side_effect = ['1.2.3-series-xxx']
+    @patch('amulet.helpers.juju')
+    def test_jujuversion_go(self, mj):
+        mj.side_effect = ['1.2.3-series-xxx']
         version = JujuVersion()
 
         self.assertEqual(version.major, 1)
@@ -44,11 +45,11 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, 3)
         self.assertEqual(str(version), '1.2.3')
 
-        mock_check_output.assert_called_with(['juju', 'version'])
+        mj.assert_called_with(['version'])
 
-    @patch('subprocess.check_output')
-    def test_jujuversion_py(self, mcheck_output):
-        mcheck_output.side_effect = [Exception('Non-zero exit'), 'juju 8.6']
+    @patch('amulet.helpers.juju')
+    def test_jujuversion_py(self, mj):
+        mj.side_effect = [OSError('Non-zero exit'), 'juju 8.6']
         version = JujuVersion()
 
         self.assertEqual(version.major, 8)
@@ -56,11 +57,11 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, 0)
         self.assertEqual(str(version), '8.6.0')
 
-        mcheck_output.assert_called_with(['juju', '--version'], stderr=-2)
+        mj.assert_called_with(['--version'])
 
-    @patch('subprocess.check_output')
-    def test_jujuversion_malformed(self, mcheck_output):
-        mcheck_output.return_value = '1.2.3.45'
+    @patch('amulet.helpers.juju')
+    def test_jujuversion_malformed(self, mj):
+        mj.return_value = '1.2.3.45'
         version = JujuVersion()
 
         self.assertEqual(version.major, 1)
@@ -68,7 +69,7 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, 3)
         self.assertEqual(str(version), '1.2.3')
 
-        mcheck_output.assert_called_once_with(['juju', 'version'])
+        mj.assert_called_once_with(['version'])
 
     @patch('os.path.isfile')
     @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
@@ -114,3 +115,9 @@ class HelpersTest(unittest.TestCase):
         menvironments.return_value = envs
 
         self.assertRaises(ValueError, default_environment)
+
+
+class JujuTest(unittest.TestCase):
+    def test_juju(self):
+        v = JujuVersion()
+        self.assertEqual(str(v), juju(['version']).split('-')[0])

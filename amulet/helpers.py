@@ -50,9 +50,12 @@ def run_bzr(args, working_dir, env=None):
 
 def juju(args, env=None):
     try:
-        p = subprocess.Popen(['juju'] + args, env=env)
-    except:
-        raise
+        p = subprocess.Popen(['juju'] + args, env=env, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+        raise OSError("juju not found, do you have Juju installed?")
     out, err = p.communicate()
     if p.returncode:
         raise IOError("juju command failed {!r}:\n"
@@ -99,12 +102,10 @@ class JujuVersion(object):
                 break  # List out of range? Versions not semantic? Too bad
 
     def get_version(self):
-        cmd = ['juju', 'version']
         try:
-            version = subprocess.check_output(cmd)
+            version = juju(['version'])
         except:
-            cmd[1] = '--version'
-            version = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            version = juju(['--version'])
 
         self.update_version(self.parse_version(version))
 
