@@ -270,5 +270,5 @@ class Deployment(object):
 
     def cleanup(self):
         shutil.rmtree(self.deployer_dir)
-        for sentry in self._sentry:
-            shutil.rmtree(os.path.dirname(self._sentry[sentry].charm))
+        for sentry in self._sentries:
+            shutil.rmtree(os.path.dirname(self._sentries[sentry].charm))

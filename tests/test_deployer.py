@@ -37,6 +37,7 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(True, d.use_sentries)
         self.assertEqual({}, d._sentries)
         self.assertEqual([], d.relations)
+        d.cleanup()
 
     def test_load(self):
         d = Deployment(juju_env='gojuju')
@@ -50,6 +51,7 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['gojuju']['services'], d.services)
         self.assertEqual(dmap['gojuju']['relations'], d.relations)
         self.assertEqual(dmap['gojuju']['series'], d.series)
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_add(self, mcharm):
@@ -62,6 +64,7 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
         self.assertEqual({'charm': {'charm': 'cs:precise/charm'}}, d.services)
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_add_branch(self, mcharm):
@@ -75,6 +78,7 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual({'bar':
                           {'branch': 'lp:~foo/charms/precise/baz/trunk'}},
                          d.services)
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_add_units(self, mcharm):
@@ -87,12 +91,14 @@ class DeployerTests(unittest.TestCase):
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
                                     'num_units': 2}}, d.services)
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_add_error(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         self.assertRaises(ValueError, d.add, 'bar')
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_relate(self, mcharm):
@@ -105,14 +111,17 @@ class DeployerTests(unittest.TestCase):
         d.add('foo')
         d.relate('foo:f', 'bar:b')
         self.assertEqual(d.relations, [['foo:f', 'bar:b']])
+        d.cleanup()
 
     def test_relate_too_few(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(LookupError, d.relate, 'foo:f')
+        d.cleanup()
 
     def test_relate_no_relation(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo', 'bar:a')
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_relate_relation_nonexist(self, mcharm):
@@ -121,10 +130,12 @@ class DeployerTests(unittest.TestCase):
         d.add('foo')
 
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:b')
+        d.cleanup()
 
     def test_relate_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:a')
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_configure(self, mcharm):
@@ -143,11 +154,13 @@ class DeployerTests(unittest.TestCase):
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
                                        'port': 100}}}, d.services)
+        d.cleanup()
 
     def test_configure_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.configure, 'wordpress',
                           {'tuning': 'optimized'})
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_expose(self, mcharm):
@@ -164,10 +177,12 @@ class DeployerTests(unittest.TestCase):
                           {'branch':
                            'lp:~charmers/charms/precise/wordpress/trunk',
                            'expose': True}}, d.services)
+        d.cleanup()
 
     def test_expose_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.expose, 'wordpress')
+        d.cleanup()
 
     @patch('amulet.deployer.get_charm')
     def test_schema(self, mcharm):
@@ -197,6 +212,7 @@ class DeployerTests(unittest.TestCase):
                           'lp:~charmers/charms/precise/wordpress/trunk'}},
             'series': 'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
         self.assertEqual(schema, d.schema())
+        d.cleanup()
 
     def test_build_sentries_writes_relationship_sentry_metadata(self):
         """Even if there are no relations the metadata.yaml is written."""
@@ -204,25 +220,31 @@ class DeployerTests(unittest.TestCase):
         d.build_sentries()
         self.assertIn('metadata.yaml',
                       os.listdir(d.relationship_sentry.charm))
+        d.cleanup()
 
     @patch.dict('os.environ', {'JUJU_TEST_CHARM': 'charmbook'})
     def test_juju_test_charm(self):
         d = Deployment(juju_env='gogo')
         self.assertEqual('charmbook', d.charm_name)
+        d.cleanup()
 
     def test_add_post_deploy(self):
         d = Deployment(juju_env='gogo')
         d.deployed = True
         self.assertRaises(NotImplementedError, d.add, 'mysql')
+        d.cleanup()
 
     def test_relate_post_deploy(self):
         d = Deployment(juju_env='gogo')
         d.deployed = True
-        self.assertRaises(NotImplementedError, d.relate, 'mysql:db', 'wordpress:db')
+        self.assertRaises(NotImplementedError, d.relate, 'mysql:db',
+                          'wordpress:db')
+        d.cleanup()
 
     def test_unrelate_not_enough(self):
         d = Deployment(juju_env='gogo')
         self.assertRaises(LookupError, d.unrelate, 'mysql')
+        d.cleanup()
 
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):
@@ -230,7 +252,13 @@ class DeployerTests(unittest.TestCase):
         d.deployed = True
         d.unrelate('mysql', 'charm')
         mj.assert_called_with(['remove-relation', 'mysql', 'charm'])
+        d.cleanup()
 
     def test_unrelate_post_deploy(self):
         d = Deployment(juju_env='gogo')
-        self.assertRaises(NotImplementedError, d.unrelate, 'mysql:db', 'wordpress:db')
+        self.assertRaises(NotImplementedError, d.unrelate, 'mysql:db',
+                          'wordpress:db')
+        d.cleanup()
+
+    def test_setup(self):
+        pass
