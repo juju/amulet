@@ -5,3 +5,4 @@ exclude_lines =
     def setup_logging
     def main
     class StoreTimedelta
+    continue
