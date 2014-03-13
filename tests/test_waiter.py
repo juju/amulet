@@ -91,6 +91,21 @@ class WaiterTest(unittest.TestCase):
 
     @patch.object(waiter, 'status')
     @patch('amulet.helpers.JujuVersion')
+    def test_state_subordinate_removal(self, jver, ms):
+        jver.side_effect = [JujuVersion(1, 17, 0, False)]
+        mstatus = JujuStatus('juju')
+        mstatus.add('test-sub')
+        mstatus.add('test-srv')
+        mstatus.status['services']['test-sub'].pop('units', None)
+        mstatus.status['services']['test-sub']['subordinate-to'] = 'test-srv'
+
+
+        ms.return_value = yaml.safe_load(str(mstatus))
+        output = {'test-srv': {'0': 'started'}}
+        self.assertEqual(output, waiter.state(juju_env='test'))
+
+    @patch.object(waiter, 'status')
+    @patch('amulet.helpers.JujuVersion')
     def test_state_service_not_there(self, jver, pyjuju_status):
         jver.side_effect = [JujuVersion(0, 7, 0, False)]
         mstatus = JujuStatus('juju')
