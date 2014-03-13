@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 import yaml
+import shutil
 
 from mock import patch, Mock, call
 from amulet.deployer import _default_sentry_template
@@ -27,6 +28,7 @@ class BuilderTest(unittest.TestCase):
         builder = Builder(customstr("acharm"), _default_sentry_template)
         self.assertRaises(yaml.representer.RepresenterError,
                           builder.write_metadata)
+        shutil.rmtree(builder.charm)
 
 
 class RunBzrTest(unittest.TestCase):
