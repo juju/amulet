@@ -91,6 +91,36 @@ class Deployment(object):
 
         self.charm_cache[service] = c
 
+    def add_unit(self, service, units=1):
+        if not isinstance(units, int) or units < 1:
+            raise ValueError('Only positive integers can be used for units')
+        if service not in self.services:
+            raise ValueError('Service needs to be added before you can scale')
+        if self.deployed:
+            return juju(['add-unit', service])
+
+        srv = self.services[service]
+        if 'num_units' not in srv:
+            # TODO: Make num_units explicit, even if just 1
+            srv['num_units'] = 1
+
+        self.service[service]['num_units'] = srv['num_units'] + units
+
+    def remove_unit(self, *args):
+        if not self.deployed:
+            raise NotImplementedError('Environment not setup yet')
+        if not args:
+            raise ValueError('No units provided')
+        for unit in args:
+            if '/' not in unit:
+                raise ValueError('%s is not a unit' % unit)
+            service = unit.split('/')[0]
+            if service not in self.services:
+                raise ValueError('%s, is not a deployed service' % unit)
+
+        units = [unit for unit in args]
+        juju(['remove-unit'] + units)
+
     def relate(self, *args):
         if len(args) < 2:
             raise LookupError('Need at least two services:relation')

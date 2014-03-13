@@ -260,5 +260,41 @@ class DeployerTests(unittest.TestCase):
                           'wordpress:db')
         d.cleanup()
 
+    @patch('amulet.deployer.juju')
+    def test_remove_unit(self, mj):
+        d = Deployment(juju_env='gogo')
+        d.add('mysql', units=2)
+        d.deployed = True
+        d.remove_unit('mysql/1')
+        mj.assert_called_with(['remove-unit', 'mysql/1'])
+        d.cleanup()
+
+    def test_remove_unit_not_deployed(self):
+        d = Deployment(juju_env='gogo')
+        d.add('mysql', units=2)
+        self.assertRaises(NotImplementedError, d.remove_unit, 'mysql/0')
+        d.cleanup()
+
+    def test_remove_unit_no_args(self):
+        d = Deployment(juju_env='gogo')
+        d.add('mysql', units=2)
+        d.deployed = True
+        self.assertRaises(ValueError, d.remove_unit)
+        d.cleanup()
+
+    def test_remove_unit_not_a_unit(self):
+        d = Deployment(juju_env='gogo')
+        d.add('mysql', units=2)
+        d.deployed = True
+        self.assertRaises(ValueError, d.remove_unit, 'mysql/1', 'lolk')
+        d.cleanup()
+
+    def test_remove_unit_not_deployed(self):
+        d = Deployment(juju_env='gogo')
+        d.add('mysql', units=2)
+        d.deployed = True
+        self.assertRaises(ValueError, d.remove_unit, 'wordpress/1')
+        d.cleanup()
+
     def test_setup(self):
         pass
