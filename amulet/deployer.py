@@ -247,7 +247,8 @@ class Deployment(object):
                 relation_name = "-".join(relation).replace(':', '_')
                 self.relations.remove(relation)
                 try:
-                    interface = get_relation(service, rel_name)[1]
+                    interface = get_relation(service, rel_name,
+                                             self.charm_cache)[1]
                 except:
                     continue
 
@@ -263,7 +264,8 @@ class Deployment(object):
                                                  interface)
 
                 for rel in relation:
-                    rel_data = get_relation(*rel.split(':'))
+                    rel_data = get_relation(*rel.split(':'),
+                                            cache=self.charm_cache)
                     self._relate('%s:%s-%s'
                                  % (relation_sentry, rel_data[0],
                                     relation_name), rel)

@@ -9,8 +9,12 @@ from charmworldlib.charm import Charm
 from .helpers import run_bzr, setup_bzr
 
 
-def get_relation(charm, relation):
-    c = get_charm(charm)
+def get_relation(charm, relation, cache=None):
+    if cache and charm in cache:
+        c = cache[charm]
+    else:
+        c = get_charm(charm)
+
     relations = c.relations
 
     if not relations:
