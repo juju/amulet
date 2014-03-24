@@ -153,11 +153,11 @@ class LaunchpadCharm(object):
         self.url = None
         self.subordinate = False
         self.code_source = self.source = {'location': branch, 'type': 'bzr'}
-        self._raw = self._load(os.path.join(branch, 'metadata.yaml'))
-        self._parse(self._raw)
         self.relations = {}
         self.provides = {}
         self.requires = {}
+        self._raw = self._load(os.path.join(branch, 'metadata.yaml'))
+        self._parse(self._raw)
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
