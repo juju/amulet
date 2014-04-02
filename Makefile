@@ -6,10 +6,10 @@ else
   PIP = venv/bin/pip
 endif
 # If the bin version does not exist look in venv/local/bin
-ifeq ($(wildcard venv/bin/nosetests-3.3),)
-  NOSE = venv/local/bin/nosetests-3.3
+ifeq ($(wildcard venv/bin/nosetests),)
+  NOSE = venv/local/bin/nosetests
 else
-  NOSE = venv/bin/nosetests-3.3
+  NOSE = venv/bin/nosetests
 endif
 
 # ###########
@@ -21,7 +21,7 @@ install: venv develop
 
 venv: $(PY)
 $(PY):
-	python3 -m venv venv
+	python3 -m venv venv --without-pip
 	curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | $(PY)
 	curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | $(PY)
 	rm setuptools*.zip
