@@ -172,7 +172,7 @@ class Deployment(object):
         if self.deployed:
             opts = ['set', service]
             for k, v in options.items():
-                opts.append("%s='%s'" % (k, v))
+                opts.append("%s=%s" % (k, v))
             return juju(opts)
 
         if service not in self.services:
