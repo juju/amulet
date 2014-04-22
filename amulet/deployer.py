@@ -251,6 +251,9 @@ class Deployment(object):
                 self.expose(sentry.metadata['name'])
                 self._sentries[sentry.metadata['name']] = sentry
                 self.services[service]['_has_sentry'] = True
+                charm = self.charm_cache[service]
+                if hasattr(charm, 'series'):
+                    self.services[sentry.metadata['name']]['series'] = charm.series
 
         # Build relationship sentry
         if not self.relationship_sentry:
