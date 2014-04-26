@@ -93,6 +93,43 @@ class DeployerTests(unittest.TestCase):
                                     'num_units': 2}}, d.services)
         d.cleanup()
 
+    @patch('amulet.sentry.waiter.status')
+    @patch('amulet.deployer.subprocess')
+    @patch('amulet.deployer.get_charm')
+    def test_add_unit(self, mcharm, subprocess, waiter_status):
+        def _mock_status(juju_env):
+            status = dict(services={})
+            total_units = 1
+            for service in d.services:
+                status['services'][service] = dict(units={})
+                for unit in range(d.services[service].get('num_units', 1)):
+                    total_units += 1
+                    status['services'][service]['units'][
+                        '{}/{}'.format(service, unit)] = {
+                        'public-address': '10.0.3.{}'.format(total_units)}
+            status['services']['relation-sentry'] = {
+                'units': {
+                    'relation-sentry/0': {
+                        'public-address': '10.0.3.1'}}}
+            return status
+
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+        charm.series = 'precise'
+
+        waiter_status.side_effect = _mock_status
+
+        d = Deployment(juju_env='gojuju')
+        d.add('charm', units=1)
+        d.setup()
+        with patch('amulet.deployer.juju'):
+            d.add_unit('charm')
+        self.assertTrue('charm/1' in d.sentry.unit)
+
+        d.cleanup()
+
     @patch('amulet.deployer.get_charm')
     def test_add_error(self, mcharm):
         d = Deployment(juju_env='gojuju')
