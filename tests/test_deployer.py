@@ -3,6 +3,7 @@
 import os
 import unittest
 import json
+import yaml
 
 from amulet import Deployment
 from mock import patch, MagicMock
@@ -91,6 +92,82 @@ class DeployerTests(unittest.TestCase):
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
                                     'num_units': 2}}, d.services)
+        d.cleanup()
+
+    def _make_mock_status(self, d):
+        def _mock_status(juju_env):
+            status = dict(services={})
+            total_units = 1
+            for service in d.services:
+                status['services'][service] = dict(units={})
+                for unit in range(d.services[service].get('num_units', 1)):
+                    total_units += 1
+                    status['services'][service]['units'][
+                        '{}/{}'.format(service, unit)] = {
+                        'public-address': '10.0.3.{}'.format(total_units)}
+            status['services']['relation-sentry'] = {
+                'units': {
+                    'relation-sentry/0': {
+                        'public-address': '10.0.3.1'}}}
+            return status
+        return _mock_status
+
+    @patch('amulet.helpers.environments')
+    @patch('amulet.sentry.waiter.status')
+    @patch('amulet.deployer.subprocess')
+    @patch('amulet.deployer.get_charm')
+    def test_add_unit(self, mcharm, subprocess, waiter_status, environments):
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+        charm.series = 'precise'
+
+        environments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
+
+        d = Deployment(juju_env='gojuju')
+        waiter_status.side_effect = self._make_mock_status(d)
+        d.add('charm', units=1)
+        d.setup()
+        with patch('amulet.deployer.juju'):
+            d.add_unit('charm')
+        self.assertTrue('charm/1' in d.sentry.unit)
+
+        d.cleanup()
+
+    @patch('amulet.helpers.environments')
+    @patch('amulet.sentry.waiter.status')
+    @patch('amulet.deployer.subprocess')
+    @patch('amulet.deployer.get_charm')
+    def test_add_unit_error(self, mcharm, subprocess, waiter_status, environments):
+        def mock_unit_error(f, service, unit_name):
+            def _mock_unit_error(juju_env):
+                status = f(juju_env)
+                unit = status['services'][service]['units'].get(unit_name)
+                if not unit:
+                    return status
+                unit['agent-state'] = 'error'
+                unit['agent-state-info'] = 'hook failed: install'
+                return status
+            return _mock_unit_error
+
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+        charm.series = 'precise'
+
+        environments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
+
+        d = Deployment(juju_env='gojuju')
+        waiter_status.side_effect = mock_unit_error(
+            self._make_mock_status(d), 'charm', 'charm/1')
+        d.add('charm', units=1)
+        d.setup()
+        with patch('amulet.deployer.juju'):
+            self.assertRaisesRegexp(
+                Exception, 'Error on unit charm/1: hook failed: install',
+                d.add_unit, 'charm')
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')

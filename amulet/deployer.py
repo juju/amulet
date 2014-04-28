@@ -96,15 +96,15 @@ class Deployment(object):
             raise ValueError('Only positive integers can be used for units')
         if service not in self.services:
             raise ValueError('Service needs to be added before you can scale')
+
+        self.services[service]['num_units'] = \
+            self.services[service].get('num_units', 1) + units
+
         if self.deployed:
-            return juju(['add-unit', service])
-
-        srv = self.services[service]
-        if 'num_units' not in srv:
-            # TODO: Make num_units explicit, even if just 1
-            srv['num_units'] = 1
-
-        self.service[service]['num_units'] = srv['num_units'] + units
+            output = juju(['add-unit', service])
+            if self.use_sentries:
+                self.sentry = Talisman(self.services)
+            return output
 
     def remove_unit(self, *args):
         if not self.deployed:

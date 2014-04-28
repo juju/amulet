@@ -10,7 +10,7 @@ from .helpers import (
     JujuVersion,
 )
 
-SUCESS_STATES = ['started']
+SUCCESS_STATES = ['started']
 
 
 def wait(*args, **kwargs):
@@ -63,7 +63,7 @@ def raise_for_state(*args, **kwargs):
 
     for service in status:
         for unit in status[service]:
-            if not status[service][unit] in SUCESS_STATES:
+            if not status[service][unit] in SUCCESS_STATES:
                 raise StateError("%s: %s" % (unit, status[service][unit]))
 
 

@@ -131,7 +131,7 @@ class Talisman(object):
         if not juju_env:
             juju_env = helpers.default_environment()
 
-        status = waiter.status(juju_env)
+        status = self.wait_for_status(juju_env, services)
         if rel_sentry in status['services']:
             rel_sentry_units = status['services'][rel_sentry]['units']
             rel_sentry_unit = rel_sentry_units['/'.join([rel_sentry, '0'])]
@@ -154,6 +154,38 @@ class Talisman(object):
                 unit_data = service_status['units'][unit]
                 self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data,
                                                           rel_sentry_addr)
+
+    def wait_for_status(self, juju_env, services, timeout=300):
+        """Return env status, but only after all units have a
+        public-address assigned.
+
+        Raises if a unit reaches error state, or if public-address not
+        available for all units before timeout expires.
+
+        """
+        try:
+            with helpers.timeout(timeout):
+                while True:
+                    ready = True
+                    status = waiter.status(juju_env)
+                    for service in services:
+                        if not 'units' in status['services'][service]:
+                            continue
+                        for unit, unit_dict in \
+                                status['services'][service]['units'].items():
+                            if 'error' == unit_dict.get('agent-state'):
+                                raise Exception('Error on unit {}: {}'.format(
+                                    unit, unit_dict.get('agent-state-info')))
+                            if 'public-address' not in unit_dict:
+                                ready = False
+                    if ready:
+                        return status
+        except helpers.TimeoutError:
+            raise helpers.TimeoutError(
+                'public-address not set for'
+                'all units after {}s'.format(timeout))
+        except:
+            raise
 
     def wait(self, timeout=300):
         #for unit in self.unit:
