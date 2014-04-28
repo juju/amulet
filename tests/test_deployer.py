@@ -3,6 +3,7 @@
 import os
 import unittest
 import json
+import yaml
 
 from amulet import Deployment
 from mock import patch, MagicMock
@@ -93,10 +94,11 @@ class DeployerTests(unittest.TestCase):
                                     'num_units': 2}}, d.services)
         d.cleanup()
 
+    @patch('amulet.helpers.environments')
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
     @patch('amulet.deployer.get_charm')
-    def test_add_unit(self, mcharm, subprocess, waiter_status):
+    def test_add_unit(self, mcharm, subprocess, waiter_status, environments):
         def _mock_status(juju_env):
             status = dict(services={})
             total_units = 1
@@ -119,6 +121,7 @@ class DeployerTests(unittest.TestCase):
         charm.url = None
         charm.series = 'precise'
 
+        environments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
         waiter_status.side_effect = _mock_status
 
         d = Deployment(juju_env='gojuju')
