@@ -159,6 +159,9 @@ class Talisman(object):
         """Return env status, but only after all units have a
         public-address assigned.
 
+        Raises if a unit reaches error state, or if public-address not
+        available for all units before timeout expires.
+
         """
         try:
             with helpers.timeout(timeout):
@@ -170,6 +173,9 @@ class Talisman(object):
                             continue
                         for unit, unit_dict in \
                                 status['services'][service]['units'].items():
+                            if 'error' == unit_dict.get('agent-state'):
+                                raise Exception('Error on unit {}: {}'.format(
+                                    unit, unit_dict.get('agent-state-info')))
                             if 'public-address' not in unit_dict:
                                 ready = False
                     if ready:
@@ -178,6 +184,8 @@ class Talisman(object):
             raise helpers.TimeoutError(
                 'public-address not set for'
                 'all units after {}s'.format(timeout))
+        except:
+            raise
 
     def wait(self, timeout=300):
         #for unit in self.unit:
