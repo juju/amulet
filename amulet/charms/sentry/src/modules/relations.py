@@ -5,6 +5,8 @@ import glob
 import json_rpc
 import cherrypy
 
+RELATIONS_DIR = '/opt/relations'
+
 
 class Module (object):
     @json_rpc.expose_anonymous
@@ -12,11 +14,11 @@ class Module (object):
         if not cherrypy.request.method == "GET":
             raise cherrypy.HTTPError(405)
 
-        if not os.path.exists('/opt/relations'):
+        if not os.path.exists(RELATIONS_DIR):
             return {}
 
         relations = {}
-        for relation in glob.glob('/opt/relations/*'):
+        for relation in glob.glob(RELATIONS_DIR + '/*'):
             relname = os.path.basename(relation)
             relations[relname] = self.list_units(relname)
 
@@ -30,7 +32,7 @@ class Module (object):
         if not relation:
             raise cherrypy.HTTPError(400)
 
-        if not os.path.exists(os.path.join('/opt/relations', relation)):
+        if not os.path.exists(os.path.join(RELATIONS_DIR, relation)):
             raise cherrypy.HTTPError(404)
 
         if not unit:
@@ -39,7 +41,7 @@ class Module (object):
                 data[unit] = json.loads(self.relation(relation, unit).decode())
             return data
 
-        data_file = os.path.join('/opt/relations', relation, unit, 'data')
+        data_file = os.path.join(RELATIONS_DIR, relation, unit, 'data')
         if not os.path.exists(data_file):
             raise cherrypy.HTTPError(404)
 
@@ -50,7 +52,7 @@ class Module (object):
 
     def list_units(self, relation):
         units = []
-        for relunits in glob.glob('/opt/relations/%s/*' % relation):
+        for relunits in glob.glob(RELATIONS_DIR + '/%s/*' % relation):
             units.append(os.path.basename(relunits))
 
         return units
