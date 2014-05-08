@@ -1,4 +1,5 @@
 PY := venv/bin/python
+PY2 := venvpy2/bin/python
 # If the bin version does not exist look in venv/local/bin
 ifeq ($(wildcard venv/bin/pip),)
   PIP = venv/local/bin/pip
@@ -11,20 +12,36 @@ ifeq ($(wildcard venv/bin/nosetests),)
 else
   NOSE = venv/bin/nosetests
 endif
+# If the bin version does not exist look in venv/local/bin
+ifeq ($(wildcard venvpy2/bin/pip),)
+  PIP2 = venvpy2/local/bin/pip
+else
+  PIP2 = venvpy2/bin/pip
+endif
+# If the bin version does not exist look in venv/local/bin
+ifeq ($(wildcard venvpy2/bin/nosetests),)
+  NOSE2 = venvpy2/local/bin/nosetests
+else
+  NOSE2 = venvpy2/bin/nosetests
+endif
 
 # ###########
 # Build
 # ###########
 
 .PHONY: install
-install: venv develop
+install: venv venvpy2 develop
 
 venv: $(PY)
 $(PY):
 	python3 -m venv venv --without-pip
 	curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | $(PY)
-	curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | $(PY)
+	venv/bin/easy_install pip
 	rm setuptools*.zip
+
+venvpy2: $(PY2)
+$(PY2):
+	virtualenv venvpy2
 
 .PHONY: clean_all
 clean_all: clean clean_venv
@@ -32,6 +49,7 @@ clean_all: clean clean_venv
 .PHONY: clean_venv
 clean_venv:
 	rm -rf venv
+	rm -rf venvpy2
 
 .PHONY: clean
 clean:
@@ -46,6 +64,7 @@ lib/python*/site-packages/aumlet.egg-link:
 .PHONY: sysdeps
 sysdeps:
 	sudo apt-get $(shell tty -s || echo -y) install python3-dev juju-core bzr
+	sudo apt-get $(shell tty -s || echo -y) install python-dev python-virtualenv python-pip
 
 # ###########
 # Develop
@@ -54,9 +73,13 @@ sysdeps:
 $(NOSE): $(PY)
 	$(PIP) install -r test-requires.txt
 
+$(NOSE2): $(PY2)
+	$(PIP2) install -r test-requires.txt
+
 .PHONY: test
-test: $(NOSE)
+test: $(NOSE) $(NOSE2)
 	make py3test
+	make py2test
 
 # This is a private target used to get around finding nose in different paths.
 # Do not call this manually, just use make test.
@@ -64,6 +87,11 @@ test: $(NOSE)
 py3test:
 	@echo Testing Python 3...
 	@$(NOSE) --nologcapture
+
+.PHONY: py2test
+py2test:
+	@echo Testing Sentry code with Python 2...
+	@$(NOSE2) tests/test_sentry.py --nologcapture
 
 .PHONY: coverage
 coverage: $(NOSE)

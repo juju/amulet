@@ -55,6 +55,7 @@ Get the source and build your developmenmt environment with:
     cd amulet
     make sysdeps
     make install
+    make test
 
 # Usage
 

@@ -1,6 +1,4 @@
 import sys
-PY3 = sys.version > '3'
-
 import base64
 import hashlib
 import json

@@ -8,5 +8,4 @@ for i in [name for _, name, _ in pkgutil.iter_modules(['modules'])]:
     exec("modules.append(Module)")
 
 
-class API (*modules):
-    pass
+API = type("API", tuple(modules), {})
