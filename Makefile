@@ -23,7 +23,7 @@ venv: $(PY)
 $(PY):
 	python3 -m venv venv --without-pip
 	curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | $(PY)
-	curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | $(PY)
+	venv/bin/easy_install pip
 	rm setuptools*.zip
 
 .PHONY: clean_all

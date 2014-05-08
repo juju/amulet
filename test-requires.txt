@@ -2,3 +2,5 @@ coverage
 pep8
 nose
 mock
+cherrypy
+pyyaml

@@ -2,8 +2,7 @@
 
 set -ex
 
-apt-get install -y python3-all python3-setuptools ssl-cert
-easy_install3 cherrypy
+apt-get install -y python-cherrypy3 ssl-cert
 
 mkdir -p /var/log/sentry/
 rsync -avz src/ /opt/api/
