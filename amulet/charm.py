@@ -118,6 +118,9 @@ class LocalCharm(object):
         if not os.path.exists(os.path.join(path, 'metadata.yaml')):
             raise Exception('Charm not found')
 
+        if not os.path.exists(os.path.join(path, '.bzr')):
+            path = self._make_temp_copy(path)
+
         self.url = None
         self.subordinate = False
         self.relations = {}
@@ -126,6 +129,17 @@ class LocalCharm(object):
         self.code_source = self.source = {'location': path}
         self._raw = self._load(os.path.join(path, 'metadata.yaml'))
         self._parse(self._raw)
+
+    def _make_temp_copy(self, path):
+        d = tempfile.mkdtemp(prefix='charm')
+        temp_charm_dir = os.path.join(d, os.path.basename(path))
+        shutil.copytree(path, temp_charm_dir, symlinks=True)
+        setup_bzr(temp_charm_dir)
+        run_bzr(["add", "."], temp_charm_dir)
+        run_bzr(["commit", "--unchanged", "-m", "Copied from {}".format(path)],
+                temp_charm_dir)
+        self.temp_dir = d
+        return temp_charm_dir
 
     def _parse(self, metadata):
         rel_keys = ['provides', 'requires']
@@ -144,8 +158,13 @@ class LocalCharm(object):
     def __str__(self):
         return yaml.dump(self._raw)
 
-    def _repr__(self):
+    def __repr__(self):
         return '<LocalCharm %s>' % self.code_source['location']
+
+    def __del__(self):
+        temp_dir = getattr(self, 'temp_dir', None)
+        if temp_dir:
+            shutil.rmtree(temp_dir)
 
 
 class LaunchpadCharm(object):
@@ -174,5 +193,5 @@ class LaunchpadCharm(object):
     def __str__(self):
         return yaml.dump(self._raw)
 
-    def _repr__(self):
+    def __repr__(self):
         return '<LaunchpadCharm %s>' % self.code_source['location']
