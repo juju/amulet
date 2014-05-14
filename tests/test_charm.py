@@ -1,6 +1,7 @@
 
 import os
 import sys
+import tempfile
 import unittest
 import yaml
 import shutil
@@ -131,6 +132,23 @@ class LocalCharmTest(unittest.TestCase):
         c = LocalCharm('/path/to/test')
         self.assertEqual('test', c.name)
         mlc_l.assert_called_with('/path/to/test/metadata.yaml')
+
+    def test_make_temp(self):
+        charm_dir = tempfile.mkdtemp()
+        metadata = {}
+        with open(os.path.join(charm_dir, 'metadata.yaml'), 'w') as f:
+            f.write(yaml.dump(metadata))
+
+        c = LocalCharm(charm_dir)
+        code_source = c.code_source['location']
+        self.assertTrue(code_source != charm_dir)
+        self.assertTrue(code_source.startswith('/tmp/charm'))
+        self.assertTrue(os.path.exists(os.path.join(code_source, '.bzr')))
+        self.assertTrue(os.path.exists(os.path.join(
+            code_source, 'metadata.yaml')))
+
+        del c
+        self.assertFalse(os.path.exists(os.path.join(code_source, '../')))
 
 
 class LaunchpadCharmTest(unittest.TestCase):
