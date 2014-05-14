@@ -155,6 +155,54 @@ class Talisman(object):
                 self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data,
                                                           rel_sentry_addr)
 
+    def __getitem__(self, service):
+        """Return the UnitSentry object(s) for ``service``
+
+        :param service: A string in one of two forms::
+            "service_name"
+            "service_name/unit_num"
+
+        If the first form is used, a list (possibly empty) of all the
+        UnitSentry objects for that service is returned.
+
+        If the second form is used, a single object, the UnitSentry for
+        the specified unit, is returned.
+
+        Examples::
+
+            >>> d
+            <amulet.deployer.Deployment object at 0x7fac83ce8438>
+            >>> d.schema()['local']['services']['meteor']['num_units']
+            2
+            >>> # get UnitSentry for specific unit
+            >>> meteor_0 = d.sentry['meteor/0']
+            >>> print(meteor_0.info['service'], meteor_0.info['unit'])
+            meteor 0
+            >>> # get all UnitSentry objects for a service
+            >>> for sentry in d.sentry['meteor']:
+            ...     print(sentry.info['service'], sentry.info['unit'])
+            ...
+            meteor 1
+            meteor 0
+            >>>
+
+        """
+        single_unit = '/' in service
+
+        def match(service, unit_name):
+            if single_unit:
+                return service == unit_name
+            return service == unit_name.split('/')[0]
+
+        unit_sentries = [unit_sentry
+                         for unit_name, unit_sentry in self.unit.items()
+                         if match(service, unit_name)]
+
+        if single_unit and unit_sentries:
+            return unit_sentries[0]
+
+        return unit_sentries
+
     def wait_for_status(self, juju_env, services, timeout=300):
         """Return env status, but only after all units have a
         public-address assigned.
