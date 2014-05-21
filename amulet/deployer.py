@@ -150,12 +150,39 @@ class Deployment(object):
         self.relations.append([a, b])
 
     def unrelate(self, *args):
-        if len(args) < 2:
-            raise LookupError('Need at least two services:relation')
+        if len(args) != 2:
+            raise LookupError('Need exactly two service:relations')
         if not self.deployed:
             raise NotImplementedError('Environment not setup yet')
 
-        return juju(['remove-relation'] + [r for r in args])
+        for srv_rel in args:
+            if not ':' in srv_rel:
+                raise ValueError('All relations must be explicit, ' +
+                                 'service:relation')
+
+        sentry_relations = self._get_sentry_relations(*args)
+        for relation in sentry_relations:
+            juju(['remove-relation'] + relation)
+
+    def _get_sentry_relations(self, service_rel_1, service_rel_2):
+        """Return the two relations that join ``service_rel_1`` and
+        ``service_rel_2`` via a relation sentry.
+
+        """
+        def _get_sentry_relation(rel_1, rel_2):
+            for r in self.relations:
+                if (r[1] == rel_2 and
+                        r[0].startswith('relation-sentry') and
+                        '_'.join(rel_1.split(':')) in r[0]):
+                    return r
+            raise LookupError(
+                'Could not find relation between {} and {}'.format(
+                    service_rel_1, service_rel_2))
+
+        return [
+            _get_sentry_relation(service_rel_1, service_rel_2),
+            _get_sentry_relation(service_rel_2, service_rel_1),
+        ]
 
     def schema(self):
         return self.deployer_map(self.services, self.relations)
