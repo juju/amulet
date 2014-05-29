@@ -49,10 +49,15 @@ class DeployerTests(unittest.TestCase):
                   "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
-        d.load(dmap)
-        self.assertEqual(dmap['gojuju']['services'], d.services)
+        with patch.object(d, 'add') as add:
+            d.load(dmap)
         self.assertEqual(dmap['gojuju']['relations'], d.relations)
         self.assertEqual(dmap['gojuju']['series'], d.series)
+        add.assert_has_calls([
+            call('wordpress', charm=None, units=1),
+            call('mysql', charm=None, units=1)],
+            any_order=True
+        )
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')

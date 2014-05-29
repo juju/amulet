@@ -61,12 +61,13 @@ class Deployment(object):
     def load(self, deploy_cfg):
         self.juju_env = list(deploy_cfg.keys())[0]
         schema = deploy_cfg[self.juju_env]
-        self.services = schema['services']
+        for service, service_config in schema['services'].items():
+            self.add(
+                service,
+                charm=service_config.get('charm'),
+                units=service_config.get('num_units', 1))
         self.series = schema['series']
-        self.relations = []
-
-        for rel in schema['relations']:
-            self.relations.append(rel)
+        self.relations = schema['relations']
 
     def add(self, service, charm=None, units=1):
         if self.deployed:
