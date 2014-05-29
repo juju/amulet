@@ -43,7 +43,7 @@ class DeployerTests(unittest.TestCase):
 
     def test_load(self):
         d = Deployment(juju_env='gojuju')
-        schema = '{"gojuju": {"series": "raring", "services": {"wordpress": \
+        schema = '{"mybundle": {"series": "raring", "services": {"wordpress": \
                   {"branch": "lp:~charmers/charms/precise/wordpress/trunk"}, \
                   "mysql": {"options": {"tuning": "fastest"}, \
                   "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
@@ -51,8 +51,9 @@ class DeployerTests(unittest.TestCase):
         dmap = json.loads(schema)
         with patch.object(d, 'add') as add:
             d.load(dmap)
-        self.assertEqual(dmap['gojuju']['relations'], d.relations)
-        self.assertEqual(dmap['gojuju']['series'], d.series)
+        self.assertEqual(d.juju_env, 'gojuju')
+        self.assertEqual(dmap['mybundle']['relations'], d.relations)
+        self.assertEqual(dmap['mybundle']['series'], d.series)
         add.assert_has_calls([
             call('wordpress', charm=None, units=1),
             call('mysql', charm=None, units=1)],

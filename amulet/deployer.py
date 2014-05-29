@@ -59,8 +59,7 @@ class Deployment(object):
         self.charm_cache = CharmCache(self.charm_name)
 
     def load(self, deploy_cfg):
-        self.juju_env = list(deploy_cfg.keys())[0]
-        schema = deploy_cfg[self.juju_env]
+        schema = next(iter(deploy_cfg.values()))
         for service, service_config in schema['services'].items():
             self.add(
                 service,
