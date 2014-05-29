@@ -76,6 +76,8 @@ class Deployment(object):
             raise ValueError('Service is already set to be deployed')
 
         c = self.charm_cache[charm or service]
+        if charm:
+            self.charm_cache[service] = c
 
         if c.subordinate:
             subordinate = True
