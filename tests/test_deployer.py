@@ -6,6 +6,7 @@ import json
 import yaml
 
 from amulet import Deployment
+from amulet.deployer import CharmCache
 from mock import patch, MagicMock, call
 
 RAW_ENVIRONMENTS_YAML = '''
@@ -425,3 +426,28 @@ class DeployerTests(unittest.TestCase):
 
     def test_setup(self):
         pass
+
+
+class CharmCacheTest(unittest.TestCase):
+    def test_init(self):
+        c = CharmCache('mytestcharm')
+        self.assertEqual(c.test_charm, 'mytestcharm')
+
+    @patch('amulet.deployer.get_charm')
+    def test_getitem_service(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c['myservice']
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('myservice')
+
+        get_charm.reset_mock()
+        charm2 = c['myservice']
+        self.assertEqual(charm, charm2)
+        self.assertFalse(get_charm.called)
+
+    @patch('amulet.deployer.get_charm')
+    def test_getitem_testcharm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c['mytestcharm']
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with(os.getcwd())
