@@ -115,6 +115,8 @@ def get_charm(charm_path):
 
 class LocalCharm(object):
     def __init__(self, path):
+        path = os.path.abspath(os.path.expanduser(path))
+
         if not os.path.exists(os.path.join(path, 'metadata.yaml')):
             raise Exception('Charm not found')
 
