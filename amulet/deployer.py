@@ -16,6 +16,24 @@ _default_sentry_template = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'charms/sentry')
 
 
+class CharmCache(dict):
+    def __init__(self, test_charm):
+        super(CharmCache, self).__init__()
+        self.test_charm = test_charm
+
+    def __getitem__(self, service):
+        return self.fetch(service)
+
+    def fetch(self, service, charm=None):
+        try:
+            return super(CharmCache, self).__getitem__(service)
+        except KeyError:
+            charm = charm or service
+            self[service] = get_charm(
+                os.getcwd() if charm == self.test_charm else charm)
+            return super(CharmCache, self).__getitem__(service)
+
+
 class Deployment(object):
     def __init__(self, juju_env=None, series='precise', sentries=True,
                  juju_deployer='juju-deployer',
@@ -38,20 +56,21 @@ class Deployment(object):
 
         self.deployer = juju_deployer
         self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
-        self.charm_cache = {}
 
         if 'JUJU_TEST_CHARM' in os.environ:
             self.charm_name = os.environ['JUJU_TEST_CHARM']
 
-    def load(self, deploy_cfg):
-        self.juju_env = list(deploy_cfg.keys())[0]
-        schema = deploy_cfg[self.juju_env]
-        self.services = schema['services']
-        self.series = schema['series']
-        self.relations = []
+        self.charm_cache = CharmCache(self.charm_name)
 
-        for rel in schema['relations']:
-            self.relations.append(rel)
+    def load(self, deploy_cfg):
+        schema = next(iter(deploy_cfg.values()))
+        for service, service_config in schema['services'].items():
+            self.add(
+                service,
+                charm=service_config.get('charm'),
+                units=service_config.get('num_units', 1))
+        self.series = schema['series']
+        self.relations = schema['relations']
 
     def add(self, service, charm=None, units=1):
         if self.deployed:
@@ -59,13 +78,8 @@ class Deployment(object):
         subordinate = False
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
-        if charm:
-            c = get_charm(charm)
-        else:
-            if service == self.charm_name:
-                c = get_charm(os.getcwd())
-            else:
-                c = get_charm(service)
+
+        c = self.charm_cache.fetch(service, charm)
 
         if c.subordinate:
             subordinate = True
@@ -88,8 +102,6 @@ class Deployment(object):
             self.services[service]['_has_sentry'] = True
         if units > 1:
             self.services[service]['num_units'] = units
-
-        self.charm_cache[service] = c
 
     def add_unit(self, service, units=1):
         if not isinstance(units, int) or units < 1:

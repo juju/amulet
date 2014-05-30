@@ -6,6 +6,7 @@ import json
 import yaml
 
 from amulet import Deployment
+from amulet.deployer import CharmCache
 from mock import patch, MagicMock, call
 
 RAW_ENVIRONMENTS_YAML = '''
@@ -42,16 +43,22 @@ class DeployerTests(unittest.TestCase):
 
     def test_load(self):
         d = Deployment(juju_env='gojuju')
-        schema = '{"gojuju": {"series": "raring", "services": {"wordpress": \
+        schema = '{"mybundle": {"series": "raring", "services": {"wordpress": \
                   {"branch": "lp:~charmers/charms/precise/wordpress/trunk"}, \
                   "mysql": {"options": {"tuning": "fastest"}, \
                   "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
-        d.load(dmap)
-        self.assertEqual(dmap['gojuju']['services'], d.services)
-        self.assertEqual(dmap['gojuju']['relations'], d.relations)
-        self.assertEqual(dmap['gojuju']['series'], d.series)
+        with patch.object(d, 'add') as add:
+            d.load(dmap)
+        self.assertEqual(d.juju_env, 'gojuju')
+        self.assertEqual(dmap['mybundle']['relations'], d.relations)
+        self.assertEqual(dmap['mybundle']['series'], d.series)
+        add.assert_has_calls([
+            call('wordpress', charm=None, units=1),
+            call('mysql', charm=None, units=1)],
+            any_order=True
+        )
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')
@@ -425,3 +432,54 @@ class DeployerTests(unittest.TestCase):
 
     def test_setup(self):
         pass
+
+
+class CharmCacheTest(unittest.TestCase):
+    def test_init(self):
+        c = CharmCache('mytestcharm')
+        self.assertEqual(c.test_charm, 'mytestcharm')
+
+    @patch('amulet.deployer.get_charm')
+    def test_getitem_service(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c['myservice']
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('myservice')
+
+        get_charm.reset_mock()
+        charm2 = c['myservice']
+        self.assertEqual(charm, charm2)
+        self.assertFalse(get_charm.called)
+
+    @patch('amulet.deployer.get_charm')
+    def test_getitem_testcharm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c['mytestcharm']
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with(os.getcwd())
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_service(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('myservice')
+
+        get_charm.reset_mock()
+        charm2 = c['myservice']
+        self.assertEqual(charm, charm2)
+        self.assertFalse(get_charm.called)
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_charm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice', 'anothercharm')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('anothercharm')
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_testcharm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice', 'mytestcharm')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with(os.getcwd())
