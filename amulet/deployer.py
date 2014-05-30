@@ -22,11 +22,15 @@ class CharmCache(dict):
         self.test_charm = test_charm
 
     def __getitem__(self, service):
+        return self.fetch(service)
+
+    def fetch(self, service, charm=None):
         try:
             return super(CharmCache, self).__getitem__(service)
         except KeyError:
+            charm = charm or service
             self[service] = get_charm(
-                os.getcwd() if service == self.test_charm else service)
+                os.getcwd() if charm == self.test_charm else charm)
             return super(CharmCache, self).__getitem__(service)
 
 
@@ -75,9 +79,7 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        c = self.charm_cache[charm or service]
-        if charm:
-            self.charm_cache[service] = c
+        c = self.charm_cache.fetch(service, charm)
 
         if c.subordinate:
             subordinate = True

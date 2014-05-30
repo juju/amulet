@@ -457,3 +457,29 @@ class CharmCacheTest(unittest.TestCase):
         charm = c['mytestcharm']
         self.assertEqual(charm, get_charm.return_value)
         get_charm.assert_called_once_with(os.getcwd())
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_service(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('myservice')
+
+        get_charm.reset_mock()
+        charm2 = c['myservice']
+        self.assertEqual(charm, charm2)
+        self.assertFalse(get_charm.called)
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_charm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice', 'anothercharm')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with('anothercharm')
+
+    @patch('amulet.deployer.get_charm')
+    def test_fetch_testcharm(self, get_charm):
+        c = CharmCache('mytestcharm')
+        charm = c.fetch('myservice', 'mytestcharm')
+        self.assertEqual(charm, get_charm.return_value)
+        get_charm.assert_called_once_with(os.getcwd())
