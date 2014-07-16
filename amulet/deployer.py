@@ -229,7 +229,14 @@ class Deployment(object):
             raise ValueError('%s has not yet been described' % service)
         self.services[service]['expose'] = True
 
-    def setup(self, timeout=600):
+    def setup(self, timeout=600, cleanup=True):
+        """Deploy the workload.
+
+        :param timeout: Amount of time to wait for deployment to complete.
+        :param cleanup: Set to False to leave the generated deployer file
+            on disk. Useful for debugging.
+
+        """
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
@@ -240,13 +247,14 @@ class Deployment(object):
         try:
             with unit_timesout(timeout):
                 subprocess.check_call([os.path.expanduser(self.deployer), '-W',
-                                       '-c', s, '-e', self.juju_env,
+                                       '-L', '-c', s, '-e', self.juju_env,
                                        self.juju_env], cwd=self.deployer_dir)
             self.deployed = True
         except subprocess.CalledProcessError:
             raise
         finally:
-            os.remove(s)
+            if cleanup:
+                os.remove(s)
 
         if not self.deployed:
             raise Exception('Deployment failed for an unknown reason')
