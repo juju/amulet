@@ -72,7 +72,7 @@ class Deployment(object):
         self.series = schema['series']
         self.relations = schema['relations']
 
-    def add(self, service, charm=None, units=1):
+    def add(self, service, charm=None, units=1, constraints=None):
         if self.deployed:
             raise NotImplementedError('Environment already setup')
         subordinate = False
@@ -98,10 +98,22 @@ class Deployment(object):
             self.services[service] = {'charm': c.url}
         else:
             self.services[service] = {'branch': c.code_source['location']}
+
         if subordinate:
             self.services[service]['_has_sentry'] = True
+
         if units > 1:
             self.services[service]['num_units'] = units
+
+        if constraints:
+            if not isinstance(constraints, dict):
+                raise ValueError('Constraints must be specified as a dict')
+
+            r = []
+            for k, v in constraints.items():
+                r.append("%s=%s" % (k, v))
+
+            self.services[service]['constraints'] = " ".join(r)
 
     def add_unit(self, service, units=1):
         if not isinstance(units, int) or units < 1:

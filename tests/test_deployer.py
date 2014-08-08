@@ -8,6 +8,7 @@ import yaml
 from amulet import Deployment
 from amulet.deployer import CharmCache
 from mock import patch, MagicMock, call
+from collections import OrderedDict
 
 RAW_ENVIRONMENTS_YAML = '''
 default: gojuju
@@ -98,6 +99,26 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'num_units': 2}}, d.services)
+        d.cleanup()
+
+    @patch('amulet.deployer.get_charm')
+    def test_add_constraints(self, mcharm):
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+
+        d = Deployment(juju_env='gojuju')
+        d.add('charm', units=2, constraints=OrderedDict([
+            ("cpu-power", 0),
+            ("cpu-cores", 4),
+            ("mem", "512M")
+        ]))
+
+        self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'constraints':
+                                    'cpu-power=0 cpu-cores=4 mem=512M',
                                     'num_units': 2}}, d.services)
         d.cleanup()
 
