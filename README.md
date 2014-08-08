@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/marcoceppi/amulet.png?branch=master)](https://travis-ci.org/marcoceppi/amulet) [![Coverage Status](https://coveralls.io/repos/marcoceppi/amulet/badge.png)](https://coveralls.io/r/marcoceppi/amulet) [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/marcoceppi/amulet/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
-Amulet is a set of tools designed to simplify the testing process for charm authors. Amulet aims to be a 
+Amulet is a set of tools designed to simplify the testing process for charm authors. Amulet aims to be a
 
 - testing harness to ease the use of writing and running tests.
 - validation of charm relation data, not just what a charm expects/receives.
@@ -121,15 +121,16 @@ That information is then translated to a Juju Deployer deployment file then, fin
 
 #### Deployment(juju_env=None, series='precise', sentries=True, juju_deployer='juju-deployer', sentry_template=None)
 
-a
-
-#### Deployment.add(service, charm=None, units=1)
+#### Deployment.add(service, charm=None, units=1, constraints=None)
 
 Add a new service to the deployment schema.
 
 - `service` Name of the service to deploy
 - `charm` If provided, will be the charm used. Otherwise `service` is used as the charm
 - `units` Number of units to deploy
+- `constraints` A dictionary that specifies the machine constraints.
+
+##### Example deployment
 
 ```python
 import amulet
@@ -139,6 +140,20 @@ d.add('wordpress')
 d.add('second-wp', charm='wordpress')
 d.add('personal-wp', charm='~marcoceppi/wordpress', units=2)
 ```
+##### Example deployment using constraints
+
+```python
+import amulet
+from collections import OrderedDict
+
+d = amulet.Deployment()
+d.add('charm', units=2, constraints=OrderedDict([
+    ("cpu-power", 0),
+    ("cpu-cores", 4),
+    ("mem", "512M")
+]))
+```
+
 
 #### Deployment.build_relations()
 
