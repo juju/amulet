@@ -17,6 +17,7 @@ from amulet.charm import (
     LocalCharm,
     LaunchpadCharm,
     setup_bzr,
+    get_charm,
 )
 
 
@@ -153,3 +154,17 @@ class LocalCharmTest(unittest.TestCase):
 
 class LaunchpadCharmTest(unittest.TestCase):
     pass
+
+
+class GetCharmTest(unittest.TestCase):
+    def test_local(self):
+        with patch('amulet.charm.LocalCharm') as LocalCharm:
+            with patch.dict('amulet.charm.os.environ', {}):
+                get_charm('local:precise/mycharm')
+                LocalCharm.assert_called_once_with('precise/mycharm')
+                LocalCharm.reset_mock()
+
+            with patch.dict('amulet.charm.os.environ', {
+                    'JUJU_REPOSITORY': '~/charms'}):
+                get_charm('local:precise/mycharm')
+                LocalCharm.assert_called_once_with('~/charms/precise/mycharm')
