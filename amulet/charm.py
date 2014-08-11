@@ -107,6 +107,11 @@ def get_charm(charm_path):
         return Charm(charm_path)
     if charm_path.startswith('lp:'):
         return LaunchpadCharm(charm_path)
+    if charm_path.startswith('local:'):
+        return LocalCharm(
+            os.path.join(
+                os.environ.get('JUJU_REPOSITORY', ''),
+                charm_path[len('local:'):]))
     if os.path.exists(os.path.expanduser(charm_path)):
         return LocalCharm(charm_path)
 
