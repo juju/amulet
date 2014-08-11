@@ -114,8 +114,10 @@ class JujuVersion(object):
         return '.'.join(str(v) for v in [self.major, self.minor, self.patch])
 
 
-def environments(juju_home="~/.juju/"):
-    env_file = os.path.expanduser(os.path.join(juju_home, 'environments.yaml'))
+def environments(juju_home=None):
+    juju_home = os.path.expanduser(
+        juju_home or os.environ.get('JUJU_HOME') or '~/.juju/')
+    env_file = os.path.join(juju_home, 'environments.yaml')
     if not os.path.isfile(env_file):
         raise IOError('%s was not found.' % env_file)
 
@@ -132,8 +134,9 @@ def raise_status(code, msg=None):
     sys.exit(code)
 
 
-def default_environment(juju_home="~/.juju/"):
-    juju_home = os.path.expanduser(juju_home)
+def default_environment(juju_home=None):
+    juju_home = os.path.expanduser(
+        juju_home or os.environ.get('JUJU_HOME') or '~/.juju/')
     envs = environments(juju_home)
 
     if 'JUJU_ENV' in os.environ:

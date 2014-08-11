@@ -31,14 +31,8 @@ def wait(*args, **kwargs):
     import os
 
     if not 'juju_env' in kwargs:
-        if 'JUJU_ENV' in os.environ:
-            kwargs['juju_env'] = os.environ['JUJU_ENV']
-        else:
-            if 'JUJU_HOME' in os.environ:
-                kwargs['juju_env'] = default_environment(
-                    os.environ['JUJU_HOME'])
-            else:
-                kwargs['juju_env'] = default_environment()
+        kwargs['juju_env'] = \
+            os.environ.get('JUJU_ENV') or default_environment()
 
     if not 'timeout' in kwargs:
         kwargs['timeout'] = 300
