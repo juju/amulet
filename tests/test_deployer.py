@@ -51,7 +51,8 @@ class DeployerTests(unittest.TestCase):
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
         with patch.object(d, 'add') as add:
-            d.load(dmap)
+            with patch.object(d, 'configure') as configure:
+                d.load(dmap)
         self.assertEqual(d.juju_env, 'gojuju')
         self.assertEqual(dmap['mybundle']['relations'], d.relations)
         self.assertEqual(dmap['mybundle']['series'], d.series)
@@ -60,6 +61,9 @@ class DeployerTests(unittest.TestCase):
             call('mysql', charm=None, units=1)],
             any_order=True
         )
+        configure.assert_has_calls([
+            call('mysql', {'tuning': 'fastest'}),
+        ])
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')
