@@ -68,7 +68,10 @@ class Deployment(object):
             self.add(
                 service,
                 charm=service_config.get('charm'),
-                units=service_config.get('num_units', 1))
+                units=service_config.get('num_units', 1),
+            )
+            if service_config.get('options'):
+                self.configure(service, service_config['options'])
         self.series = schema['series']
         self.relations = schema['relations']
 
