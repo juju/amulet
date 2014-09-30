@@ -261,9 +261,14 @@ class Deployment(object):
 
         try:
             with unit_timesout(timeout):
-                subprocess.check_call([os.path.expanduser(self.deployer), '-W',
-                                       '-L', '-c', s, '-e', self.juju_env,
-                                       self.juju_env], cwd=self.deployer_dir)
+                subprocess.check_call([
+                    os.path.expanduser(self.deployer),
+                    '-W', '-L',
+                    '-c', s,
+                    '-e', self.juju_env,
+                    '-t', timeout + 100,  # ensure we timeout before deployer
+                    self.juju_env,
+                ], cwd=self.deployer_dir)
             self.deployed = True
         except subprocess.CalledProcessError:
             raise

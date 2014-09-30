@@ -55,8 +55,8 @@ class HelpersTest(unittest.TestCase):
 
         self.assertEqual(version.major, 8)
         self.assertEqual(version.minor, 6)
-        self.assertEqual(version.patch, 0)
-        self.assertEqual(str(version), '8.6.0')
+        self.assertEqual(version.patch, None)
+        self.assertEqual(str(version), '8.6')
 
         mj.assert_called_with(['--version'])
 
