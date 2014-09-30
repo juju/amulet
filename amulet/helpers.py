@@ -101,6 +101,9 @@ class JujuVersion(object):
                 setattr(self, self.mapping[i], int(ver))
             except:
                 break  # List out of range? Versions not semantic? Too bad
+        while i < (len(self.mapping) - 1):
+            i += 1
+            setattr(self, self.mapping[i], None)
 
     def get_version(self):
         try:
@@ -111,7 +114,8 @@ class JujuVersion(object):
         self.update_version(self.parse_version(version))
 
     def __str__(self):
-        return '.'.join(str(v) for v in [self.major, self.minor, self.patch])
+        return '.'.join(str(v) for v in [self.major, self.minor, self.patch]
+                        if v is not None)
 
 
 def environments(juju_home=None):
