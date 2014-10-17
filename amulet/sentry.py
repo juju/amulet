@@ -77,6 +77,9 @@ class UnitSentry(Sentry):
         r = self._fetch_filesystem('/file', {'name': filename})
         return r.json()
 
+    def file_stat_new(self, filename):
+        return self._fs_data(filename)
+
     def _fetch_filesystem(self, endpoint, params):
         r = self.query(endpoint, params)
         if r.status_code == 404:
@@ -90,18 +93,89 @@ class UnitSentry(Sentry):
         r = self._fetch_filesystem('/file/contents', {'name': filename})
         return r.text
 
+    def file_contents_new(self, filename):
+        output, return_code = self._run('cat {}'.format(filename))
+        if return_code == 0:
+            return output
+        else:
+            raise IOError(output)
+
     def directory_stat(self, path):
         r = self._fetch_filesystem('/directory', {'name': path})
         return r.json()
+
+    def directory_stat_new(self, path):
+        return self._fs_data(path)
 
     def directory_listing(self, path):
         r = self._fetch_filesystem('/directory/contents', {'name': path})
         return r.json()
 
+    def directory_listing_new(self, path):
+        import json
+        import textwrap
+        cmd = """\
+        /usr/bin/python -c "
+        import json
+        import os
+        contents = {{'files': [], 'directories': []}}
+        for fd in os.listdir('{path}'):
+            if os.path.isfile('{path}/%s' % (fd)):
+                contents['files'].append(fd)
+            else:
+                contents['directories'].append(fd)
+        print(json.dumps(contents))"
+        """.format(path=path)
+        output, return_code = self._run(textwrap.dedent(cmd))
+        if return_code == 0:
+            return json.loads(output)
+        else:
+            raise IOError(output)
+
     def run(self, command):
         r = self.query('/run', data=command)
         results = r.json()
         return results['output'], results['code']
+
+    def run_new(self, command):
+        output, code = self._run(command)
+        return output.strip(), code
+
+    def _run(self, command, unit=None):
+        import subprocess
+        unit = unit or '{}/{}'.format(self.info['service'], self.info['unit'])
+        cmd = ['juju', 'run', '--unit', unit, command]
+        p = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = p.communicate()
+        output = stdout if p.returncode == 0 else stderr
+        return output.decode('utf8'), p.returncode
+
+    def _fs_data(self, path):
+        import json
+        import textwrap
+        cmd = """\
+        /usr/bin/python -c "
+        import json
+        import os
+        s = os.stat('{}')
+        d = {{
+            'mtime': s.st_mtime,
+            'size': s.st_size,
+            'uid': s.st_uid,
+            'gid': s.st_gid,
+            'mode': oct(s.st_mode)
+        }}
+        print(json.dumps(d))"
+        """.format(path)
+        output, return_code = self._run(textwrap.dedent(cmd))
+        if return_code == 0:
+            return json.loads(output)
+        else:
+            raise IOError(output)
 
     #d.sentry.unit[].relation('db', 'mysql:db')
     def relation(self, from_rel, to_rel):
@@ -118,6 +192,33 @@ class UnitSentry(Sentry):
                             '/relation/%s/%s' % (relation, self.info['unit']))
             if r.status_code == 200:
                 return r.json()
+
+        raise Exception('Relationship not found')
+
+    def relation_new(self, from_rel, to_rel):
+        import json
+        this_unit = '{service}/{unit}'.format(**self.info)
+        to_service, to_relation = to_rel.split(':')
+        r_ids, _ = self._run('relation-ids {}'.format(from_rel))
+        r_units = []
+        for r_id in r_ids.split():
+            r_units.extend(self._run(
+                'relation-list -r {}'.format(r_id))[0].split())
+        r_units = [u for u in r_units if u.split('/')[0] == to_service]
+        for r_unit in r_units:
+            r_ids, _ = self._run(
+                'relation-ids {}'.format(to_relation), unit=r_unit)
+            l_units = []
+            for r_id in r_ids.split():
+                l_units.extend(self._run(
+                    'relation-list -r {}'.format(r_id),
+                    unit=r_unit)[0].split())
+                if this_unit in l_units:
+                    break
+            output, _ = self._run(
+                'relation-get -r {} - {} --format json'.format(
+                    r_id, this_unit), unit=r_unit)
+            return json.loads(output)
 
         raise Exception('Relationship not found')
 
