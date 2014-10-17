@@ -1,4 +1,5 @@
 import amulet
+import subprocess
 import unittest
 
 
@@ -15,17 +16,16 @@ class TestDeployment(unittest.TestCase):
 
         try:
             cls.deployment.setup(timeout=900)
+            # For testing new relation code, make a real relation between
+            # services, bypassing relation-sentry
+            subprocess.call('juju add-relation pictor haproxy'.split())
+
             cls.deployment.sentry.wait()
         except amulet.helpers.TimeoutError:
             amulet.raise_status(
                 amulet.SKIP, msg="Environment wasn't stood up in time")
         except:
             raise
-
-        # For testing new relation code, make a real relation between
-        # services, bypassing relation-sentry
-        #import subprocess
-        #subprocess.call('juju add-relation pictor haproxy'.split())
 
         cls.pictor = cls.deployment.sentry['pictor/0']
         cls.haproxy = cls.deployment.sentry['haproxy/0']
@@ -121,28 +121,6 @@ class TestDeployment(unittest.TestCase):
             self.pictor.run_new('echo hello'),
             ('hello', 0),
         )
-
-        # Now you can use self.deployment.sentry.unit[UNIT] to address each of
-        # the units and perform more in-depth steps.  You can also reference
-        # the first unit as self.unit.
-        # There are three test statuses that can be triggered with
-        # amulet.raise_status():
-        #   - amulet.PASS
-        #   - amulet.FAIL
-        #   - amulet.SKIP
-        # Each unit has the following methods:
-        #   - .info - An array of the information of that unit from Juju
-        #   - .file(PATH) - Get the details of a file on that unit
-        #   - .file_contents(PATH) - Get plain text output of PATH file from that unit
-        #   - .directory(PATH) - Get details of directory
-        #   - .directory_contents(PATH) - List files and folders in PATH on that unit
-        #   - .relation(relation, service:rel) - Get relation data from return service
-        #          add tests here to confirm service is up and working properly
-        # For example, to confirm that it has a functioning HTTP server:
-        #     page = requests.get('http://{}'.format(self.unit.info['public-address']))
-        #     page.raise_for_status()
-        # More information on writing Amulet tests can be found at:
-        #     https://juju.ubuntu.com/docs/tools-amulet.html
 
 
 if __name__ == '__main__':
