@@ -1,5 +1,4 @@
 import amulet
-import subprocess
 import unittest
 
 
@@ -16,10 +15,6 @@ class TestDeployment(unittest.TestCase):
 
         try:
             cls.deployment.setup(timeout=900)
-            # For testing new relation code, make a real relation between
-            # services, bypassing relation-sentry
-            subprocess.call('juju add-relation pictor haproxy'.split())
-
             cls.deployment.sentry.wait()
         except amulet.helpers.TimeoutError:
             amulet.raise_status(
@@ -29,7 +24,7 @@ class TestDeployment(unittest.TestCase):
 
         cls.pictor = cls.deployment.sentry['pictor/0']
         cls.haproxy = cls.deployment.sentry['haproxy/0']
-        cls.pictor.run_new(
+        cls.pictor.run(
             'mkdir -p /tmp/amulet-test/test-dir;'
             'echo contents > /tmp/amulet-test/test-file;'
         )
@@ -38,14 +33,11 @@ class TestDeployment(unittest.TestCase):
         self.assertTrue('public-address' in self.pictor.info)
         self.assertEqual('pictor', self.pictor.info['service'])
         self.assertEqual('0', self.pictor.info['unit'])
+        self.assertEqual('pictor/0', self.pictor.info['unit_name'])
 
     def test_file_stat(self):
         path = '/tmp/amulet-test/test-file'
-        self.assertEqual(
-            self.pictor.file_stat(path),
-            self.pictor.file_stat_new(path),
-        )
-        stat = self.pictor.file_stat_new(path)
+        stat = self.pictor.file_stat(path)
         self.assertTrue(stat.pop('mtime'))
         self.assertEqual(
             stat, {
@@ -60,20 +52,12 @@ class TestDeployment(unittest.TestCase):
         path = '/tmp/amulet-test/test-file'
         self.assertEqual(
             self.pictor.file_contents(path),
-            self.pictor.file_contents_new(path),
-        )
-        self.assertEqual(
-            self.pictor.file_contents_new(path),
             'contents\n',
         )
 
     def test_directory_stat(self):
         path = '/tmp/amulet-test'
-        self.assertEqual(
-            self.pictor.directory_stat(path),
-            self.pictor.directory_stat_new(path),
-        )
-        stat = self.pictor.directory_stat_new(path)
+        stat = self.pictor.directory_stat(path)
         self.assertTrue(stat.pop('mtime'))
         self.assertEqual(
             stat, {
@@ -87,38 +71,25 @@ class TestDeployment(unittest.TestCase):
     def test_directory_listing(self):
         path = '/tmp/amulet-test'
         self.assertEqual(
-            self.pictor.directory_listing(path),
-            self.pictor.directory_listing_new(path),
-        )
-        self.assertEqual(
-            self.pictor.directory_listing_new(path), {
+            self.pictor.directory_listing(path), {
                 'files': ['test-file'],
                 'directories': ['test-dir'],
             },
         )
 
     def test_relation(self):
-        pictor_info = self.pictor.relation_new(
+        pictor_info = self.pictor.relation(
             'website', 'haproxy:reverseproxy')
         for key in ['hostname', 'port', 'private-address']:
             self.assertTrue(key in pictor_info)
 
-        self.assertEqual(
-            self.pictor.relation('website', 'haproxy:reverseproxy'),
-            pictor_info,
-        )
-        self.assertEqual(
-            self.haproxy.relation('reverseproxy', 'pictor:website'),
-            self.haproxy.relation_new('reverseproxy', 'pictor:website'),
-        )
+        haproxy_info = self.haproxy.relation(
+            'reverseproxy', 'pictor:website')
+        self.assertEqual(list(haproxy_info.keys()), ['private-address'])
 
     def test_run(self):
         self.assertEqual(
             self.pictor.run('echo hello'),
-            self.pictor.run_new('echo hello'),
-        )
-        self.assertEqual(
-            self.pictor.run_new('echo hello'),
             ('hello', 0),
         )
 

@@ -1,7 +1,10 @@
 import unittest
 import yaml
 
-from amulet.sentry import Talisman
+from amulet.sentry import (
+    Talisman,
+    UnitSentry,
+)
 from mock import patch
 
 
@@ -23,8 +26,9 @@ services:
 class TalismanTest(unittest.TestCase):
 
     @patch.object(Talisman, 'wait_for_status')
+    @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.sentry.helpers.default_environment')
-    def test_init(self, default_env, wait_for_status):
+    def test_init(self, default_env, upload_scripts, wait_for_status):
         default_env.return_value = 'local'
         wait_for_status.return_value = mock_status
 
@@ -34,8 +38,9 @@ class TalismanTest(unittest.TestCase):
         self.assertTrue('meteor/1' in sentry.unit)
 
     @patch.object(Talisman, 'wait_for_status')
+    @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.sentry.helpers.default_environment')
-    def test_getitem(self, default_env, wait_for_status):
+    def test_getitem(self, default_env, upload_scripts, wait_for_status):
         default_env.return_value = 'local'
         wait_for_status.return_value = mock_status
 

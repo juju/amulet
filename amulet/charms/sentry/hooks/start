@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -ex
-
-cd /opt/api/
-python server.py 2>&1 &

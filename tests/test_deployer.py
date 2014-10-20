@@ -7,6 +7,7 @@ import yaml
 
 from amulet import Deployment
 from amulet.deployer import CharmCache
+from amulet.sentry import UnitSentry
 from mock import patch, MagicMock, call
 from collections import OrderedDict
 
@@ -38,7 +39,6 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual('gojuju', d.juju_env)
         self.assertEqual({}, d.services)
         self.assertEqual(True, d.use_sentries)
-        self.assertEqual({}, d._sentries)
         self.assertEqual([], d.relations)
         d.cleanup()
 
@@ -144,11 +144,13 @@ class DeployerTests(unittest.TestCase):
             return status
         return _mock_status
 
+    @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.helpers.environments')
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
     @patch('amulet.deployer.get_charm')
-    def test_add_unit(self, mcharm, subprocess, waiter_status, environments):
+    def test_add_unit(self, mcharm, subprocess, waiter_status, environments,
+                      upload_scripts):
         charm = mcharm.return_value
         charm.subordinate = False
         charm.code_source = {'location': 'lp:charms/charm'}
@@ -167,11 +169,13 @@ class DeployerTests(unittest.TestCase):
 
         d.cleanup()
 
+    @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.helpers.environments')
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
     @patch('amulet.deployer.get_charm')
-    def test_add_unit_error(self, mcharm, subprocess, waiter_status, environments):
+    def test_add_unit_error(self, mcharm, subprocess, waiter_status,
+                            environments, upload_scripts):
         def mock_unit_error(f, service, unit_name):
             def _mock_unit_error(juju_env):
                 status = f(juju_env)
@@ -323,14 +327,6 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(schema, d.schema())
         d.cleanup()
 
-    def test_build_sentries_writes_relationship_sentry_metadata(self):
-        """Even if there are no relations the metadata.yaml is written."""
-        d = Deployment(juju_env='gojuju', sentries=True)
-        d.build_sentries()
-        self.assertIn('metadata.yaml',
-                      os.listdir(d.relationship_sentry.charm))
-        d.cleanup()
-
     @patch.dict('os.environ', {'JUJU_TEST_CHARM': 'charmbook'})
     def test_juju_test_charm(self):
         d = Deployment(juju_env='gogo')
@@ -343,11 +339,13 @@ class DeployerTests(unittest.TestCase):
         self.assertRaises(NotImplementedError, d.add, 'mysql')
         d.cleanup()
 
-    def test_relate_post_deploy(self):
+    def test_relate_before_service_deployed(self):
         d = Deployment(juju_env='gogo')
         d.deployed = True
-        self.assertRaises(NotImplementedError, d.relate, 'mysql:db',
-                          'wordpress:db')
+        with self.assertRaises(ValueError) as e:
+            d.relate('mysql:db', 'wordpress:db')
+            self.assertEqual(
+                'Can not relate, service not deployed yet', str(e))
         d.cleanup()
 
     def test_unrelate_not_enough(self):
@@ -370,53 +368,23 @@ class DeployerTests(unittest.TestCase):
                 str(e), 'All relations must be explicit, service:relation')
         d.cleanup()
 
-    @patch.object(Deployment, '_get_sentry_relations')
     @patch('amulet.deployer.juju')
-    def test_unrelate(self, mj, _get_sentry_relations):
-        _get_sentry_relations.return_value = [
-            ['relation-sentry:provides-mysql_db-charm_db', 'mysql:db'],
-            ['relation-sentry:requires-mysql_db-charm_db', 'charm:db'],
-        ]
-
+    def test_unrelate(self, mj):
         d = Deployment(juju_env='gogo')
+        d._relate('mysql:db', 'charm:db')
         d.deployed = True
         d.unrelate('mysql:db', 'charm:db')
         mj.assert_has_calls([
             call(['remove-relation',
-                  'relation-sentry:provides-mysql_db-charm_db', 'mysql:db']),
-            call(['remove-relation',
-                  'relation-sentry:requires-mysql_db-charm_db', 'charm:db']),
+                  'mysql:db', 'charm:db']),
             ])
         d.cleanup()
 
     def test_unrelate_post_deploy(self):
         d = Deployment(juju_env='gogo')
-        self.assertRaises(NotImplementedError, d.unrelate, 'mysql:db',
-                          'wordpress:db')
-        d.cleanup()
-
-    def test_get_sentry_relations(self):
-        d = Deployment(juju_env='gogo')
-        d.relations = [
-            ['relation-sentry:provides-mysql_db-charm_db', 'mysql:db'],
-            ['relation-sentry:requires-mysql_db-charm_db', 'charm:db'],
-        ]
-        self.assertEqual(
-            d._get_sentry_relations('charm:db', 'mysql:db'),
-            d.relations)
-        self.assertEqual(
-            d._get_sentry_relations('mysql:db', 'charm:db'),
-            list(reversed(d.relations)))
-        d.cleanup()
-
-    def test_get_sentry_relations_not_found(self):
-        d = Deployment(juju_env='gogo')
-        d.relations = []
-        with self.assertRaises(LookupError) as e:
-            d._get_sentry_relations('charm:db', 'mysql:db')
-            self.assertEqual(
-                str(e),
-                'Could not find relation between charm:db and mysql:db')
+        with self.assertRaises(ValueError) as e:
+            d.unrelate('mysql:db', 'wordpress:db')
+            self.assertEqual('Relation does not exist', str(e))
         d.cleanup()
 
     @patch('amulet.deployer.juju')

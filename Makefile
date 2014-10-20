@@ -58,12 +58,20 @@ $(NOSE): $(PY)
 test: $(NOSE)
 	make py3test
 
+.PHONY: unit_test
+unit_test: $(NOSE)
+	make ARGS="-e functional" py3test
+
+.PHONY: functional_test
+functional_test: $(NOSE)
+	make ARGS="tests/functional" py3test
+
 # This is a private target used to get around finding nose in different paths.
 # Do not call this manually, just use make test.
 .PHONY: py3test
 py3test:
 	@echo Testing Python 3...
-	@$(NOSE) --nologcapture
+	@$(NOSE) --nologcapture $(ARGS)
 
 .PHONY: coverage
 coverage: $(NOSE)

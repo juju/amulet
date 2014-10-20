@@ -4,33 +4,17 @@ import sys
 import tempfile
 import unittest
 import yaml
-import shutil
 
 from mock import patch, Mock, call
-from amulet.deployer import _default_sentry_template
 
 from amulet.charm import (
-    Builder,
     run_bzr,
     get_relation,
     Charm,
     LocalCharm,
-    LaunchpadCharm,
     setup_bzr,
     get_charm,
 )
-
-
-class BuilderTest(unittest.TestCase):
-    def test_does_not_create_yaml_tags(self):
-        """Instead of creating yaml safe_load will refuse, fail at write"""
-        class customstr(str):
-            """A custom Python type yaml would serialise tagged"""
-        self.assertIn("!!", yaml.dump(customstr("a")))
-        builder = Builder(customstr("acharm"), _default_sentry_template)
-        self.assertRaises(yaml.representer.RepresenterError,
-                          builder.write_metadata)
-        shutil.rmtree(builder.charm)
 
 
 class RunBzrTest(unittest.TestCase):
