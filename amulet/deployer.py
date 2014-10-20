@@ -31,9 +31,8 @@ class CharmCache(dict):
 
 
 class Deployment(object):
-    def __init__(self, juju_env=None, series='precise', sentries=True,
-                 juju_deployer='juju-deployer',
-                 sentry_template=None):
+    def __init__(self, juju_env=None, series='precise',
+                 juju_deployer='juju-deployer', **kw):
         self.services = {}
         self.relations = []
         self.interfaces = []
@@ -44,8 +43,6 @@ class Deployment(object):
         self.charm_name = os.path.basename(os.getcwd())
 
         self.sentry = None
-        self.use_sentries = True
-
         self.deployer = juju_deployer
         self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
 

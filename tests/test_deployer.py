@@ -38,7 +38,6 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual('precise', d.series)
         self.assertEqual('gojuju', d.juju_env)
         self.assertEqual({}, d.services)
-        self.assertEqual(True, d.use_sentries)
         self.assertEqual([], d.relations)
         d.cleanup()
 
