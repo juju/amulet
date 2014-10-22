@@ -1,16 +1,12 @@
-
 import os
-import sys
 import tempfile
 import unittest
 import yaml
 
-from mock import patch, Mock, call
+from mock import patch, call
 
 from amulet.charm import (
     run_bzr,
-    get_relation,
-    Charm,
     LocalCharm,
     setup_bzr,
     get_charm,
@@ -63,47 +59,6 @@ provides:
   plation:
     interface: aniname
 '''
-
-
-class GetRelationTest(unittest.TestCase):
-    @patch('os.path.exists')
-    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
-    def test_get_relation_local_charm(self, mock_open, mexists):
-        mock_open.return_value.__enter__ = lambda s: s
-        mock_open.return_value.__exit__ = Mock()
-        mock_open.return_value.read.return_value = RAW_METADATA_YAML
-        mexists.return_value = True
-        self.assertEqual(('provides', 'aniname'),
-                         get_relation('/path/to/charm', 'plation'))
-
-    @patch('amulet.charm.Charm')
-    def test_get_relation_remote(self, mcharm):
-        cdata = {'charm': {'relations': {'requires': {'relname': {'interface':
-                                                                  'iname'}}}}}
-        mcharm.return_value = Charm.from_charmdata(cdata)
-        self.assertEqual(('requires', 'iname'), get_relation('c', 'relname'))
-
-    @patch('os.path.exists')
-    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
-    def test_no_relations(self, mock_open, mexists):
-        BAD_METADATA_YAML = '''
-        name: charm-name
-        description: Whatever man
-        '''
-        mock_open.return_value.__enter__ = lambda s: s
-        mock_open.return_value.__exit__ = Mock()
-        mock_open.return_value.read.return_value = BAD_METADATA_YAML
-        mexists.return_value = True
-        self.assertRaises(Exception, get_relation, '/path/2/bad/charm', 'noop')
-
-    @patch('os.path.exists')
-    @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
-    def test_no_match(self, mock_open, mexists):
-        mock_open.return_value.__enter__ = lambda s: s
-        mock_open.return_value.__exit__ = Mock()
-        mock_open.return_value.read.return_value = RAW_METADATA_YAML
-        mexists.return_value = True
-        self.assertEqual((None, None), get_relation('/path/charm', 'noop'))
 
 
 class LocalCharmTest(unittest.TestCase):
