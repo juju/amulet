@@ -1,4 +1,3 @@
-
 import os
 import json
 import base64
@@ -20,13 +19,15 @@ class CharmCache(dict):
     def __getitem__(self, service):
         return self.fetch(service)
 
-    def fetch(self, service, charm=None):
+    def fetch(self, service, charm=None, series='precise'):
         try:
             return super(CharmCache, self).__getitem__(service)
         except KeyError:
             charm = charm or service
             self[service] = get_charm(
-                os.getcwd() if charm == self.test_charm else charm)
+                os.getcwd() if charm == self.test_charm else charm,
+                series=series,
+            )
             return super(CharmCache, self).__getitem__(service)
 
 
@@ -70,7 +71,7 @@ class Deployment(object):
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        c = self.charm_cache.fetch(service, charm)
+        c = self.charm_cache.fetch(service, charm, self.series)
 
         if c.subordinate:
             for rtype in ['provides', 'requires']:

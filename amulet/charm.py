@@ -7,9 +7,14 @@ from charmworldlib.charm import Charm
 from .helpers import run_bzr, setup_bzr
 
 
-def get_charm(charm_path):
+def get_charm(charm_path, series='precise'):
+    def with_series(charm_path):
+        if '/' not in charm_path:
+            return '{}/{}'.format(series, charm_path)
+        return charm_path
+
     if charm_path.startswith('cs:'):
-        return Charm(charm_path)
+        return Charm(with_series(charm_path))
     if charm_path.startswith('lp:'):
         return LaunchpadCharm(charm_path)
     if charm_path.startswith('local:'):
@@ -20,7 +25,7 @@ def get_charm(charm_path):
     if os.path.exists(os.path.expanduser(charm_path)):
         return LocalCharm(charm_path)
 
-    return Charm(charm_path)
+    return Charm(with_series(charm_path))
 
 
 class LocalCharm(object):
