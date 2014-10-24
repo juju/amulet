@@ -14,3 +14,4 @@ pyvenv.cfg
 venv
 .coverage
 dist
+__pycache__/

@@ -1,14 +1,11 @@
+import json
+import os
+import subprocess
 
-import requests
+import pkg_resources
 
 from . import waiter
 from . import helpers
-from .charm import get_relation
-
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
 
 
 class SentryError(Exception):
@@ -42,20 +39,7 @@ class Sentry(object):
         raise NotImplemented()
 
     def juju_agent(self):
-        try:
-            return self.query('/juju').json()
-        except:
-            return None
-
-    def query(self, endpoint, query={}, data=None):
-        return self._fetch(self.config['address'], endpoint, query, data)
-
-    def _fetch(self, address, endpoint, query={}, data=None):
-        url = "%s/%s?%s" % (address, endpoint, urlencode(query))
-        if data:
-            return requests.post(url, data=data, verify=False)
-        else:
-            return requests.get(url, verify=False)
+        raise NotImplemented()
 
 
 class UnitSentry(Sentry):
@@ -64,60 +48,96 @@ class UnitSentry(Sentry):
         pass
 
     @classmethod
-    def fromunitdata(cls, unit, unit_data, sentry, port=9001):
+    def fromunitdata(cls, unit, unit_data):
         address = unit_data['public-address']
         unitsentry = cls(address)
-        unitsentry.info = unit_data
-        unitsentry.info['service'] = unit.split('/')[0]
-        unitsentry.info['unit'] = unit.split('/')[1]
-        unitsentry.config['sentry'] = 'https://%s:%s' % (sentry, port)
+        d = unitsentry.info = unit_data
+        d['unit_name'] = unit
+        d['service'], d['unit'] = unit.split('/')
+        unitsentry.upload_scripts()
         return unitsentry
 
+    def upload_scripts(self):
+        source = pkg_resources.resource_filename(
+            'amulet', os.path.join('unit-scripts', 'amulet'))
+        dest = '/tmp/amulet'
+        self.run('mkdir -p -m a=rwx {}'.format(dest))
+        # copy one at a time b/c `juju scp -r` doesn't work (currently)
+        for f in os.listdir(source):
+            cmd = "juju scp {} {}:{}".format(
+                os.path.join(source, f),
+                self.info['unit_name'], dest)
+            subprocess.check_call(cmd.split())
+
+    def _fs_data(self, path):
+        return self._run_unit_script("filesystem_data.py {}".format(path))
+
     def file_stat(self, filename):
-        r = self._fetch_filesystem('/file', {'name': filename})
-        return r.json()
-
-    def _fetch_filesystem(self, endpoint, params):
-        r = self.query(endpoint, params)
-        if r.status_code == 404:
-            raise IOError('%s does not exist on unit' % params['name'])
-        elif r.status_code != 200:
-            raise SentryError('API returned the following: %s' % r.status_code)
-
-        return r
+        return self._fs_data(filename)
 
     def file_contents(self, filename):
-        r = self._fetch_filesystem('/file/contents', {'name': filename})
-        return r.text
+        output, return_code = self._run('cat {}'.format(filename))
+        if return_code == 0:
+            return output
+        else:
+            raise IOError(output)
 
     def directory_stat(self, path):
-        r = self._fetch_filesystem('/directory', {'name': path})
-        return r.json()
+        return self._fs_data(path)
 
     def directory_listing(self, path):
-        r = self._fetch_filesystem('/directory/contents', {'name': path})
-        return r.json()
+        return self._run_unit_script("directory_listing.py {}".format(path))
 
     def run(self, command):
-        r = self.query('/run', data=command)
-        results = r.json()
-        return results['output'], results['code']
+        output, code = self._run(command)
+        return output.strip(), code
 
-    #d.sentry.unit[].relation('db', 'mysql:db')
+    def _run(self, command, unit=None):
+        unit = unit or self.info['unit_name']
+        cmd = ['juju', 'run', '--unit', unit, command]
+        p = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = p.communicate()
+        output = stdout if p.returncode == 0 else stderr
+        return output.decode('utf8'), p.returncode
+
+    def _run_unit_script(self, cmd):
+        cmd = "/tmp/amulet/{}".format(cmd)
+        output, return_code = self._run(cmd)
+        if return_code == 0:
+            return json.loads(output)
+        else:
+            raise IOError(output)
+
+    def juju_agent(self):
+        return self._run_unit_script("juju_agent.py")
+
     def relation(self, from_rel, to_rel):
-        # Build possible mappings, find the map, produce results
-        potential_rel = ['%s:%s' % (self.info['service'], from_rel), to_rel]
-        rel_data = get_relation(self.info['service'], from_rel)
-        relations = ['-'.join([rel_data[0],
-                     "-".join(potential_rel).replace(':', '_')])]
-        potential_rel.reverse()
-        relations.append('-'.join([rel_data[0],
-                         "-".join(potential_rel).replace(':', '_')]))
-        for relation in relations:
-            r = self._fetch(self.config['sentry'],
-                            '/relation/%s/%s' % (relation, self.info['unit']))
-            if r.status_code == 200:
-                return r.json()
+        this_unit = '{service}/{unit}'.format(**self.info)
+        to_service, to_relation = to_rel.split(':')
+        r_ids, _ = self._run('relation-ids {}'.format(from_rel))
+        r_units = []
+        for r_id in r_ids.split():
+            r_units.extend(self._run(
+                'relation-list -r {}'.format(r_id))[0].split())
+        r_units = [u for u in r_units if u.split('/')[0] == to_service]
+        for r_unit in r_units:
+            r_ids, _ = self._run(
+                'relation-ids {}'.format(to_relation), unit=r_unit)
+            l_units = []
+            for r_id in r_ids.split():
+                l_units.extend(self._run(
+                    'relation-list -r {}'.format(r_id),
+                    unit=r_unit)[0].split())
+                if this_unit in l_units:
+                    break
+            output, _ = self._run(
+                'relation-get -r {} - {} --format json'.format(
+                    r_id, this_unit), unit=r_unit)
+            return json.loads(output)
 
         raise Exception('Relationship not found')
 
@@ -132,18 +152,10 @@ class Talisman(object):
             juju_env = helpers.default_environment()
 
         status = self.wait_for_status(juju_env, services)
-        if rel_sentry in status['services']:
-            rel_sentry_units = status['services'][rel_sentry]['units']
-            rel_sentry_unit = rel_sentry_units['/'.join([rel_sentry, '0'])]
-            rel_sentry_addr = rel_sentry_unit['public-address']
-        else:
-            raise Exception('No relationship sentry found')
 
         for service in services:
             if not service in status['services']:
                 continue  # Raise something?
-
-            # self.sentry.service[service] = ServiceSentry()
 
             service_status = status['services'][service]
 
@@ -152,8 +164,7 @@ class Talisman(object):
 
             for unit in service_status['units']:
                 unit_data = service_status['units'][unit]
-                self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data,
-                                                          rel_sentry_addr)
+                self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data)
 
     def __getitem__(self, service):
         """Return the UnitSentry object(s) for ``service``
