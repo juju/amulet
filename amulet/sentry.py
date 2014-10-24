@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import subprocess
@@ -63,7 +64,7 @@ class UnitSentry(Sentry):
         dest = '/tmp/amulet'
         self.run('mkdir -p -m a=rwx {}'.format(dest))
         # copy one at a time b/c `juju scp -r` doesn't work (currently)
-        for f in os.listdir(source):
+        for f in glob.glob(os.path.join(source, '*.py')):
             cmd = "juju scp {} {}:{}".format(
                 os.path.join(source, f),
                 self.info['unit_name'], dest)
