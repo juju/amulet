@@ -15,7 +15,7 @@ tests_require = [
 
 setup(
     name='amulet',
-    version='1.7.0',
+    version='1.8.0',
     description='Tools to help with writing Juju Charm Functional tests',
     install_requires=install_requires,
     package_data={'amulet': ['unit-scripts/amulet/*']},
