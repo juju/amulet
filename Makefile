@@ -37,6 +37,7 @@ clean_venv:
 clean:
 	find . -name '*.pyc' -delete
 	find . -name '*.bak' -delete
+	find . -name __pycache__ -delete
 	rm -f .coverage
 
 develop: lib/python*/site-packages/aumlet.egg-link
