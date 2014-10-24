@@ -266,7 +266,7 @@ class Deployment(object):
                     '-W', '-L',
                     '-c', s,
                     '-e', self.juju_env,
-                    '-t', timeout + 100,  # ensure we timeout before deployer
+                    '-t', str(timeout + 100),  # ensure we timeout before deployer
                     self.juju_env,
                 ], cwd=self.deployer_dir)
             self.deployed = True
