@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import unittest
 import yaml
@@ -10,6 +11,7 @@ from amulet.charm import (
     LocalCharm,
     setup_bzr,
     get_charm,
+    is_branch,
 )
 
 
@@ -107,3 +109,22 @@ class GetCharmTest(unittest.TestCase):
                     'JUJU_REPOSITORY': '~/charms'}):
                 get_charm('local:precise/mycharm')
                 LocalCharm.assert_called_once_with('~/charms/precise/mycharm')
+
+
+class IsBranchTest(unittest.TestCase):
+    def setUp(self):
+        self.charm_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.charm_dir)
+
+    def test_bzr(self):
+        os.mkdir(os.path.join(self.charm_dir, '.bzr'))
+        self.assertTrue(is_branch(self.charm_dir))
+
+    def test_git(self):
+        os.mkdir(os.path.join(self.charm_dir, '.git'))
+        self.assertTrue(is_branch(self.charm_dir))
+
+    def test_neither(self):
+        self.assertFalse(is_branch(self.charm_dir))
