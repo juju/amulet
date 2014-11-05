@@ -122,9 +122,5 @@ class IsBranchTest(unittest.TestCase):
         os.mkdir(os.path.join(self.charm_dir, '.bzr'))
         self.assertTrue(is_branch(self.charm_dir))
 
-    def test_git(self):
-        os.mkdir(os.path.join(self.charm_dir, '.git'))
-        self.assertTrue(is_branch(self.charm_dir))
-
-    def test_neither(self):
+    def test_no_control_dir(self):
         self.assertFalse(is_branch(self.charm_dir))
