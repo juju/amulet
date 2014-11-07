@@ -46,6 +46,7 @@ class DeployerTests(unittest.TestCase):
         schema = '{"mybundle": {"series": "raring", "services": {"wordpress": \
                   {"branch": "lp:~charmers/charms/precise/wordpress/trunk"}, \
                   "mysql": {"options": {"tuning": "fastest"}, \
+                  "constraints": "mem=2G cpu-cores=2", \
                   "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
@@ -56,8 +57,9 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['mybundle']['relations'], d.relations)
         self.assertEqual(dmap['mybundle']['series'], d.series)
         add.assert_has_calls([
-            call('wordpress', charm=None, units=1),
-            call('mysql', charm=None, units=1)],
+            call('wordpress', charm=None, units=1, constraints=None),
+            call('mysql', charm=None, units=1,
+                 constraints={'mem': '2G', 'cpu-cores': '2'})],
             any_order=True
         )
         configure.assert_has_calls([

@@ -55,10 +55,17 @@ class Deployment(object):
     def load(self, deploy_cfg):
         schema = next(iter(deploy_cfg.values()))
         for service, service_config in schema['services'].items():
+            constraints = service_config.get('constraints')
+            if constraints:
+                constraints = dict(
+                    constraint.split('=')
+                    for constraint in constraints.split()
+                )
             self.add(
                 service,
                 charm=service_config.get('charm'),
                 units=service_config.get('num_units', 1),
+                constraints=constraints,
             )
             if service_config.get('options'):
                 self.configure(service, service_config['options'])
