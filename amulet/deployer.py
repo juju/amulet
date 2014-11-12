@@ -4,11 +4,26 @@ import base64
 import shutil
 import subprocess
 import tempfile
+import yaml
 
 from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 
 from .charm import get_charm
+
+
+def get_charm_name(dir_):
+    """Given a directory, return the name of the charm in that dir.
+
+    If metadata.yaml exists in the dir, grab the charm name from there.
+    Otherwise, return the name of the dir.
+
+    """
+    try:
+        with open(os.path.join(dir_, 'metadata.yaml')) as f:
+            return yaml.load(f)['name']
+    except:
+        return os.path.basename(dir_)
 
 
 class CharmCache(dict):
@@ -41,7 +56,7 @@ class Deployment(object):
         self.series = series
         self.deployed = False
         self.juju_env = juju_env or default_environment()
-        self.charm_name = os.path.basename(os.getcwd())
+        self.charm_name = get_charm_name(os.getcwd())
 
         self.sentry = None
         self.deployer = juju_deployer

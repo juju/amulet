@@ -3,10 +3,13 @@
 import os
 import unittest
 import json
+import shutil
+import tempfile
 import yaml
 
 from amulet import Deployment
 from amulet.deployer import CharmCache
+from amulet.deployer import get_charm_name
 from amulet.sentry import UnitSentry
 from mock import patch, MagicMock, call
 from collections import OrderedDict
@@ -475,3 +478,23 @@ class CharmCacheTest(unittest.TestCase):
         charm = c.fetch('myservice', 'mytestcharm')
         self.assertEqual(charm, get_charm.return_value)
         get_charm.assert_called_once_with(os.getcwd(), series='precise')
+
+
+class GetCharmNameTest(unittest.TestCase):
+    def setUp(self):
+        self.dir_ = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.dir_)
+
+    def test_name_from_yaml(self):
+        """Charm name pulled from metadata.yaml if it exists"""
+        with open(os.path.join(self.dir_, 'metadata.yaml'), 'w') as f:
+            f.write('name: testcharm')
+
+        self.assertEqual(get_charm_name(self.dir_), 'testcharm')
+
+    def test_name_from_dir(self):
+        """Charm name equals dir name if no metadata.yaml exists"""
+        self.assertEqual(
+            get_charm_name(self.dir_), os.path.basename(self.dir_))
