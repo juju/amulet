@@ -28,6 +28,17 @@ def get_charm(charm_path, series='precise'):
     return Charm(with_series(charm_path))
 
 
+def is_branch(path):
+    """Test to see if this path is a supported bzr branch.
+
+    May be bzr or git.
+    """
+    for control_dir in ('.bzr', ):
+        if os.path.exists(os.path.join(path, control_dir)):
+            return True
+    return False
+
+
 class LocalCharm(object):
     def __init__(self, path):
         path = os.path.abspath(os.path.expanduser(path))
@@ -35,7 +46,7 @@ class LocalCharm(object):
         if not os.path.exists(os.path.join(path, 'metadata.yaml')):
             raise Exception('Charm not found')
 
-        if not os.path.exists(os.path.join(path, '.bzr')):
+        if not is_branch(path):
             path = self._make_temp_copy(path)
 
         self.url = None
@@ -50,7 +61,9 @@ class LocalCharm(object):
     def _make_temp_copy(self, path):
         d = tempfile.mkdtemp(prefix='charm')
         temp_charm_dir = os.path.join(d, os.path.basename(path))
-        shutil.copytree(path, temp_charm_dir, symlinks=True)
+        def ignore(src, names):
+            return ['.git', '.bzr']
+        shutil.copytree(path, temp_charm_dir, symlinks=True, ignore=ignore)
         setup_bzr(temp_charm_dir)
         run_bzr(["add", "."], temp_charm_dir)
         run_bzr(["commit", "--unchanged", "-m", "Copied from {}".format(path)],
