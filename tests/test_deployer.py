@@ -75,7 +75,8 @@ class DeployerTests(unittest.TestCase):
 
         d = Deployment(juju_env='gojuju')
         d.add('charm')
-        self.assertEqual({'charm': {'charm': 'cs:precise/charm'}}, d.services)
+        self.assertEqual({'charm': {'charm': 'cs:precise/charm',
+                                    'num_units': 1}}, d.services)
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')
@@ -87,9 +88,8 @@ class DeployerTests(unittest.TestCase):
 
         d = Deployment(juju_env='gojuju')
         d.add('bar', 'cs:~foo/baz')
-        self.assertEqual({'bar':
-                          {'branch': 'lp:~foo/charms/precise/baz/trunk'}},
-                         d.services)
+        self.assertEqual({'bar': {'branch': 'lp:~foo/charms/precise/baz/trunk',
+                                  'num_units': 1}}, d.services)
         d.cleanup()
 
     @patch('amulet.deployer.get_charm')
@@ -165,6 +165,7 @@ class DeployerTests(unittest.TestCase):
         with patch('amulet.deployer.juju'):
             d.add_unit('charm')
         self.assertTrue('charm/1' in d.sentry.unit)
+        self.assertEqual(2, d.services['charm']['num_units'])
 
         d.cleanup()
 
@@ -204,6 +205,59 @@ class DeployerTests(unittest.TestCase):
                 Exception, 'Error on unit charm/1: hook failed: install',
                 d.add_unit, 'charm')
         d.cleanup()
+
+    @patch('amulet.deployer.get_charm')
+    def test_remove_unit(self, get_charm):
+        d = Deployment(juju_env='gojuju')
+        d.add('charm')
+        patcher = patch.object(d, 'sentry', MagicMock(unit={'charm/0': 1}))
+        self.addCleanup(patcher.stop)
+        sentry = patcher.start()
+        d.deployed = True
+        with patch('amulet.deployer.juju') as juju:
+            d.remove_unit('charm/0')
+            juju.assert_called_once_with(['remove-unit', 'charm/0'])
+        self.assertFalse('charm/0' in sentry.unit)
+        self.assertEqual(0, d.services['charm']['num_units'])
+
+    @patch('amulet.deployer.get_charm')
+    def test_remove_service(self, get_charm):
+        d = Deployment(juju_env='gojuju')
+        d.add('charm')
+        patcher = patch.object(d, 'sentry', MagicMock(unit={'charm/0': 1}))
+        self.addCleanup(patcher.stop)
+        sentry = patcher.start()
+        d.deployed = True
+        d.relations = [('charm:rel', 'another:rel')]
+        with patch('amulet.deployer.juju') as juju:
+            d.remove_service('charm')
+            juju.assert_called_once_with(['remove-service', 'charm'])
+        self.assertFalse('charm/0' in sentry.unit)
+        self.assertFalse('charm' in d.services)
+        self.assertEqual(0, len(d.relations))
+
+    @patch('amulet.deployer.get_charm')
+    def test_remove(self, get_charm):
+        d = Deployment(juju_env='gojuju')
+        d.add('charm1')
+        d.add('charm2')
+        p1 = patch.object(d, 'remove_unit')
+        p2 = patch.object(d, 'remove_service')
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+        remove_unit = p1.start()
+        remove_service = p2.start()
+        with patch('amulet.deployer.juju'):
+            d.remove('charm1/0', 'charm2')
+            remove_unit.assert_called_once_with('charm1/0')
+            remove_service.assert_called_once_with('charm2')
+
+    @patch('amulet.deployer.get_charm')
+    def test_remove_aliases(self, get_charm):
+        d = Deployment
+        self.assertEqual(d.destroy_unit, d.remove_unit)
+        self.assertEqual(d.destroy_service, d.remove_service)
+        self.assertEqual(d.destroy, d.remove)
 
     @patch('amulet.deployer.get_charm')
     def test_add_error(self, mcharm):
@@ -263,6 +317,7 @@ class DeployerTests(unittest.TestCase):
         d.configure('wordpress', {'wp-content': 'f', 'port': 100})
         self.assertEqual({'wordpress':
                           {'charm': 'cs:precise/wordpress',
+                           'num_units': 1,
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
                                        'port': 100}}}, d.services)
@@ -285,10 +340,11 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('wordpress')
         d.expose('wordpress')
-        self.assertEqual({'wordpress':
-                          {'branch':
-                           'lp:~charmers/charms/precise/wordpress/trunk',
-                           'expose': True}}, d.services)
+        self.assertEqual(
+            {'wordpress':
+                {'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
+                 'num_units': 1,
+                 'expose': True}}, d.services)
         d.cleanup()
 
     def test_expose_not_deployed(self):
@@ -317,12 +373,21 @@ class DeployerTests(unittest.TestCase):
         d.configure('mysql', {'tuning': 'fastest'})
         d.add('wordpress')
         d.relate('mysql:db', 'wordpress:db')
-        schema = {'gojuju': {'services': {'mysql': {
-            'branch': 'lp:~charmers/charms/precise/mysql/trunk',
-            'options': {'tuning': 'fastest'}},
-            'wordpress': {'branch':
-                          'lp:~charmers/charms/precise/wordpress/trunk'}},
-            'series': 'precise', 'relations': [['mysql:db', 'wordpress:db']]}}
+        schema = {'gojuju': {
+            'services': {
+                'mysql': {
+                    'branch': 'lp:~charmers/charms/precise/mysql/trunk',
+                    'num_units': 1,
+                    'options': {'tuning': 'fastest'},
+                },
+                'wordpress': {
+                    'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
+                    'num_units': 1
+                }
+            },
+            'series': 'precise',
+            'relations': [['mysql:db', 'wordpress:db']],
+        }}
         self.assertEqual(schema, d.schema())
         d.cleanup()
 
