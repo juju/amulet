@@ -67,6 +67,8 @@ def juju(args, env=None):
 @contextmanager
 def timeout(seconds):
     def signal_handler(signum, frame):
+        sys.stderr.write('Timeout occurred, printing juju status...')
+        sys.stderr.write(juju(['status']))
         raise TimeoutError()
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
