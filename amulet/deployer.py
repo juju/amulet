@@ -105,8 +105,7 @@ class Deployment(object):
         else:
             self.services[service] = {'branch': c.code_source['location']}
 
-        if units > 1:
-            self.services[service]['num_units'] = units
+        self.services[service]['num_units'] = units
 
         if constraints:
             if not isinstance(constraints, dict):
@@ -128,24 +127,77 @@ class Deployment(object):
             self.services[service].get('num_units', 1) + units
 
         if self.deployed:
-            output = juju(['add-unit', service])
+            juju(['add-unit', service, '-n', units])
             self.sentry = Talisman(self.services)
-            return output
 
-    def remove_unit(self, *args):
+    def remove_unit(self, *units):
         if not self.deployed:
             raise NotImplementedError('Environment not setup yet')
-        if not args:
+        if not units:
             raise ValueError('No units provided')
-        for unit in args:
+        for unit in units:
             if '/' not in unit:
                 raise ValueError('%s is not a unit' % unit)
             service = unit.split('/')[0]
             if service not in self.services:
-                raise ValueError('%s, is not a deployed service' % unit)
+                raise ValueError('%s is not a deployed service' % service)
 
-        units = [unit for unit in args]
-        juju(['remove-unit'] + units)
+        juju(['remove-unit'] + list(units))
+
+        for unit in units:
+            if self.sentry and unit in self.sentry.unit:
+                del self.sentry.unit[unit]
+            service = unit.split('/')[0]
+            self.services[service]['num_units'] = \
+                min(0, self.services[service].get('num_units', 1) - 1)
+    destroy_unit = remove_unit
+
+    def remove_service(self, *services):
+        if not services:
+            raise ValueError('No services provided')
+        for service in services:
+            if service not in self.services:
+                raise ValueError('%s is not a deployed service' % service)
+
+        if self.deployed:
+            juju(['remove-service'] + list(services))
+
+        for service in services:
+            self._remove_service_sentries(service)
+            self._remove_service_relations(service)
+            del self.services[service]
+    destroy_service = remove_service
+
+    def remove(self, *units_or_services):
+        if not units_or_services:
+            raise ValueError('No units or services provided')
+
+        units_or_services = set(units_or_services)
+        units = {s for s in units_or_services if '/' in s}
+        services = units_or_services - units
+        units = {u for u in units if u.split('/')[0] not in services}
+
+        if units:
+            self.remove_unit(*units)
+
+        if services:
+            self.remove_service(*services)
+    destroy = remove
+
+    def _remove_service_sentries(self, service):
+        if not self.sentry:
+            return
+
+        for unit in list(self.sentry.unit):
+            if unit.split('/')[0] == service:
+                del self.sentry.unit[unit]
+
+    def _remove_service_relations(self, service):
+        for relation in self.relations[:]:
+            for rel_service in relation:
+                if rel_service.split(':')[0] == service:
+                    self.relations.remove(relation)
+                    break
 
     def relate(self, *args):
         if len(args) < 2:
