@@ -31,6 +31,9 @@ def setup_bzr(charm_dir):
         run_bzr(['whoami', 'amulet@dummy-user.tld'], charm_dir)
 
     run_bzr(["init"], charm_dir)
+    # Set the maximum file size to 0 to avoid skipping any files in the
+    # charm.
+    run_bzr(['config', 'add.maximum_file_size=0'], charm_dir)
 
 
 def run_bzr(args, working_dir, env=None):
