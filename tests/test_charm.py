@@ -43,12 +43,16 @@ class RunBzrTest(unittest.TestCase):
 class SetupBzrTest(unittest.TestCase):
     @patch('amulet.helpers.run_bzr')
     def test_setup_bzr(self, mp):
-        mp.side_effect = [IOError("bzr command failed!"), None, None]
+        # Set one side_effect for each expected call to run_bzr.
+        mp.side_effect = [IOError("bzr command failed!"), None, None, None]
         setup_bzr('/path')
-        self.assertEqual(mp.call_args_list,
-                         [call(['whoami'], '/path'),
-                          call(['whoami', 'amulet@dummy-user.tld'], '/path'),
-                          call(['init'], '/path')])
+        self.assertEqual(
+            mp.call_args_list,
+            [call(['whoami'], '/path'),
+             call(['whoami', 'amulet@dummy-user.tld'], '/path'),
+             call(['init'], '/path'),
+             call(['config', 'add.maximum_file_size=0'], '/path'),
+             ])
 
 
 RAW_METADATA_YAML = '''
