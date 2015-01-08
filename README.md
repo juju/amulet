@@ -1,6 +1,6 @@
 # Amulet, a testing harness
 
-[![Build Status](https://travis-ci.org/marcoceppi/amulet.png?branch=master)](https://travis-ci.org/marcoceppi/amulet) [![Coverage Status](https://coveralls.io/repos/marcoceppi/amulet/badge.png)](https://coveralls.io/r/marcoceppi/amulet) [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/marcoceppi/amulet/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+[![Build Status](https://travis-ci.org/juju/amulet.png?branch=master)](https://travis-ci.org/juju/amulet) [![Coverage Status](https://coveralls.io/repos/marcoceppi/amulet/badge.png)](https://coveralls.io/r/marcoceppi/amulet)
 
 Amulet is a set of tools designed to simplify the testing process for charm authors. Amulet aims to be a
 
@@ -17,7 +17,7 @@ By definition, An amulet can be any object but its most important characteristic
 By this definition, Amulet is designed to be a library which protects charm authors from having broken charms by making test writing easier.
 
 ## Install
-Amulet is available as both a package and via pip. For source packages, see [Github](https://github.com/marcoceppi/amulet/releases.
+Amulet is available as both a package and via pip. For source packages, see [Github](https://github.com/juju/amulet/releases).
 ### Ubuntu
 Amulet is available in the Juju Stable PPA for Ubuntu
 
@@ -41,7 +41,7 @@ Amulet is built with Python3, make sure it's installed prior to following these 
 
 To install Amulet from source, first get the source:
 
-    git clone https://github.com/marcoceppi/amulet.git
+    git clone https://github.com/juju/amulet.git
     cd amulet
     make sysdeps
 
@@ -51,7 +51,7 @@ Move in to the `amulet` directory and run `sudo python3 setup.py install`. You c
 
 Get the source and build your developmenmt environment with:
 
-    git clone https://github.com/marcoceppi/amulet.git
+    git clone https://github.com/juju/amulet.git
     cd amulet
     make sysdeps
     make install
@@ -243,7 +243,9 @@ import amulet
 d = amulet.Deployment()
 d.add('wordpress')
 d.add('mysql')
-d.configure('wordpress', debug=True)
+d.configure('wordpress', {
+  debug: True
+})
 d.relate('wordpress:db', 'mysql:db')
 try:
     d.setup(timeout=900)
