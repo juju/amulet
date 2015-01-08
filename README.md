@@ -111,7 +111,10 @@ d.add('mysql')
 d.add('mediawiki')
 d.relate('mysql:db', 'mediawiki:db')
 d.expose('mediawiki')
-d.configure('mediawiki', title="My Wiki", skin="Nostolgia")
+d.configure('mediawiki', {
+  title: "My Wiki",
+  skin: "Nostolgia"
+})
 d.setup()
 ```
 
