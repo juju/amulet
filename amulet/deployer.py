@@ -134,7 +134,7 @@ class Deployment(object):
             self.services[service].get('num_units', 1) + units
 
         if self.deployed:
-            juju(['add-unit', service, '-n', units])
+            juju(['add-unit', service, '-n', str(units)])
             self.sentry = Talisman(self.services)
 
     def remove_unit(self, *units):

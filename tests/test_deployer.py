@@ -167,8 +167,9 @@ class DeployerTests(unittest.TestCase):
         waiter_status.side_effect = self._make_mock_status(d)
         d.add('charm', units=1)
         d.setup()
-        with patch('amulet.deployer.juju'):
+        with patch('amulet.deployer.juju') as j:
             d.add_unit('charm')
+            j.assert_called_with(['add-unit', 'charm', '-n', '1'])
         self.assertTrue('charm/1' in d.sentry.unit)
         self.assertEqual(2, d.services['charm']['num_units'])
 
