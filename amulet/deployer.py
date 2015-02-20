@@ -9,7 +9,7 @@ import yaml
 from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 
-from .charm import get_charm
+from .charm import CharmCache
 
 
 def get_charm_name(dir_):
@@ -24,26 +24,6 @@ def get_charm_name(dir_):
             return yaml.load(f)['name']
     except:
         return os.path.basename(dir_)
-
-
-class CharmCache(dict):
-    def __init__(self, test_charm):
-        super(CharmCache, self).__init__()
-        self.test_charm = test_charm
-
-    def __getitem__(self, service):
-        return self.fetch(service)
-
-    def fetch(self, service, charm=None, series='precise'):
-        try:
-            return super(CharmCache, self).__getitem__(service)
-        except KeyError:
-            charm = charm or service
-            self[service] = get_charm(
-                os.getcwd() if charm == self.test_charm else charm,
-                series=series,
-            )
-            return super(CharmCache, self).__getitem__(service)
 
 
 class Deployment(object):
@@ -69,6 +49,8 @@ class Deployment(object):
 
     def load(self, deploy_cfg):
         schema = next(iter(deploy_cfg.values()))
+        self.series = schema['series']
+        self.relations = schema['relations']
         for service, service_config in schema['services'].items():
             constraints = service_config.get('constraints')
             if constraints:
@@ -80,20 +62,23 @@ class Deployment(object):
                 service,
                 charm=service_config.get('charm'),
                 units=service_config.get('num_units', 1),
+                branch=service_config.get('branch', None),
                 constraints=constraints,
+                series=self.series
             )
             if service_config.get('options'):
                 self.configure(service, service_config['options'])
-        self.series = schema['series']
-        self.relations = schema['relations']
 
-    def add(self, service, charm=None, units=1, constraints=None):
+    def add(self, service, charm=None, units=1,
+            constraints=None, branch=None, series=None):
         if self.deployed:
             raise NotImplementedError('Environment already setup')
+
         if service in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        c = self.charm_cache.fetch(service, charm, self.series)
+        c = self.charm_cache.fetch(service, charm,
+                                   branch=branch, series=self.series)
 
         if c.subordinate:
             for rtype in ['provides', 'requires']:
@@ -118,10 +103,7 @@ class Deployment(object):
             if not isinstance(constraints, dict):
                 raise ValueError('Constraints must be specified as a dict')
 
-            r = []
-            for k, v in constraints.items():
-                r.append("%s=%s" % (k, v))
-
+            r = ["%s=%s" % (k, v) for k, v in constraints.items()]
             self.services[service]['constraints'] = " ".join(r)
 
     def add_unit(self, service, units=1):

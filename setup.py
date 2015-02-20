@@ -3,7 +3,8 @@ from setuptools import setup
 install_requires = [
     'requests',
     'charmworldlib',
-    'PyYAML'
+    'PyYAML',
+    'path.py'
 ]
 
 tests_require = [

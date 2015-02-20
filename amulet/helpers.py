@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+import functools
 import os
 import sys
 import yaml
@@ -166,3 +166,19 @@ def default_environment(juju_home=None):
             raise ValueError('No default environment specified.')
 
         return next(iter(envs['environments'].keys()))
+
+
+class reify(object):
+    def __init__(self, func):
+        self.func = func
+        try:
+            functools.update_wrapper(self, func)
+        except:
+            pass
+
+    def __get__(self, inst, obtype=None):
+        if inst is None:
+            return self
+        out = self.func(inst)
+        setattr(inst, self.func.__name__, out)
+        return out
