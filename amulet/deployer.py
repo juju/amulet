@@ -1,15 +1,22 @@
-import os
-import json
 import base64
+import json
+import logging
+import os
+import shlex
 import shutil
 import subprocess
-import tempfile
+import contextlib
 import yaml
+
+from path import path
+from path import tempdir
 
 from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
-
 from .charm import CharmCache
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_charm_name(dir_):
@@ -27,6 +34,8 @@ def get_charm_name(dir_):
 
 
 class Deployment(object):
+    log = logger
+
     def __init__(self, juju_env=None, series='precise',
                  juju_deployer='juju-deployer', **kw):
         self.services = {}
@@ -39,8 +48,8 @@ class Deployment(object):
         self.charm_name = get_charm_name(os.getcwd())
 
         self.sentry = None
-        self.deployer = juju_deployer
-        self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
+        self.deployer = path(juju_deployer)
+        self.deployer_dir = tempdir(prefix='amulet_deployment_')
 
         if 'JUJU_TEST_CHARM' in os.environ:
             self.charm_name = os.environ['JUJU_TEST_CHARM']
@@ -270,6 +279,19 @@ class Deployment(object):
             raise ValueError('%s has not yet been described' % service)
         self.services[service]['expose'] = True
 
+    @contextlib.contextmanager
+    def deploy_w_timeout_and_dir(self, timeout, deploy_dir):
+        """
+        :param timeout: Amount of time to wait for deployment to complete.
+        :param deploy_dir: working directory for deployment command to run
+
+        Sets timeout and working directory for wrapped block. If successful,
+        sets instance.deployed.
+        """
+        with self.deployer_dir, unit_timesout(timeout):
+            yield
+        self.deployed = True
+
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
@@ -281,32 +303,28 @@ class Deployment(object):
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
-        _, s = tempfile.mkstemp(prefix='amulet-juju-deployer-', suffix='.json')
-        with open(s, 'w') as f:
-            f.write(json.dumps(self.schema()))
+        with tempdir(prefix='amulet-juju-deployer-') as tmpdir:
+            schema_json = json.dumps(self.schema(), indent=2)
+            self.log.debug("Deployer schema\n%s", schema_json)
 
-        try:
-            with unit_timesout(timeout):
-                subprocess.check_call([
-                    os.path.expanduser(self.deployer),
-                    '-W', '-L',
-                    '-c', s,
-                    '-e', self.juju_env,
-                    '-t', str(timeout + 100),  # ensure timeout before deployer
-                    self.juju_env,
-                ], cwd=self.deployer_dir)
-            self.deployed = True
-        except subprocess.CalledProcessError:
-            raise
-        finally:
-            if cleanup:
-                os.remove(s)
+            schema_file = tmpdir / 'deployer-schema.json'
+            schema_file.write_text(schema_json)
 
-        if not self.deployed:
-            raise Exception('Deployment failed for an unknown reason')
+            cmd = "{deployer} -W -L -c {schema} -e {env} -t {timeout} {env}"
+            cmd_args = dict(deployer=self.deployer.expanduser(),
+                            schema=schema_file,
+                            env=self.juju_env,
+                            timeout=str(timeout + 100))
+            cmd = cmd.format(**cmd_args)
+            self.log.debug(cmd)
 
-        if self.deployed:
-            self.sentry = Talisman(self.services)
+            with self.deploy_w_timeout_and_dir(timeout, self.deployer_dir):
+                subprocess.check_call(shlex.split(cmd))
+
+        self.sentry = Talisman(self.services)
+        if cleanup is False:
+            tmpdir.makedirs()
+            (tmpdir / 'deployer-schema.json').write_text(schema_json)
 
     def deployer_map(self, services, relations):
         deployer_map = {

@@ -6,13 +6,12 @@ import yaml
 
 from mock import patch, call
 
-from amulet.charm import (
-    run_bzr,
-    LocalCharm,
-    setup_bzr,
-    get_charm,
-    is_branch,
-)
+from amulet.charm import CharmCache
+from amulet.charm import LocalCharm
+from amulet.charm import is_branch
+from amulet.charm import run_bzr
+from amulet.charm import setup_bzr
+
 
 
 class RunBzrTest(unittest.TestCase):
