@@ -59,9 +59,18 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['mybundle']['relations'], d.relations)
         self.assertEqual(dmap['mybundle']['series'], d.series)
         add.assert_has_calls([
-            call('wordpress', charm=None, units=1, constraints=None),
-            call('mysql', charm=None, units=1,
-                 constraints={'mem': '2G', 'cpu-cores': '2'})],
+            call('wordpress',
+                 series='raring',
+                 units=1,
+                 branch='lp:~charmers/charms/precise/wordpress/trunk',
+                 constraints=None,
+                 charm=None),
+            call('mysql',
+                 series='raring',
+                 units=1,
+                 branch='lp:~charmers/charms/precise/mysql/trunk',
+                 constraints={'mem': '2G', 'cpu-cores': '2'},
+                 charm=None)],
             any_order=True
         )
         configure.assert_has_calls([

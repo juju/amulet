@@ -157,7 +157,7 @@ class GitCharm(VCSCharm):
         self.relations = {}
         self.provides = {}
         self.requires = {}
-        self.fork = fork
+        self.branch = self.fork = fork
         self._parse(self._raw)
 
     @reify

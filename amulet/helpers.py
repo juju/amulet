@@ -179,6 +179,18 @@ class reify(object):
     def __get__(self, inst, obtype=None):
         if inst is None:
             return self
+
         out = self.func(inst)
         setattr(inst, self.func.__name__, out)
         return out
+
+
+@contextmanager
+def fail_if_timeout(seconds):
+    try:
+        yield
+    except TimeoutError:
+        message = 'Unable to set up environment in %d seconds.' % seconds
+        raise_status(FAIL, msg=message)
+    except:
+        raise

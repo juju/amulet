@@ -343,6 +343,3 @@ class Deployment(object):
             relations.append(rel)
 
         return relations
-
-    def cleanup(self):
-        shutil.rmtree(self.deployer_dir)
