@@ -16,3 +16,4 @@ venv
 .coverage
 dist
 __pycache__/
+/setuptools-12.2.zip
