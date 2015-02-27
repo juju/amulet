@@ -60,12 +60,14 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['mybundle']['series'], d.series)
         add.assert_has_calls([
             call('wordpress',
+                 placement=None,
                  series='raring',
                  units=1,
                  branch='lp:~charmers/charms/precise/wordpress/trunk',
                  constraints=None,
                  charm=None),
             call('mysql',
+                 placement=None,
                  series='raring',
                  units=1,
                  branch='lp:~charmers/charms/precise/mysql/trunk',
