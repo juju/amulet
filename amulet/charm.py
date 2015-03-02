@@ -61,12 +61,12 @@ def with_series(charm_path, series):
     return charm_path
 
 
-def is_branch(path):
+def is_branch(path, control_dirs=set(('.bzr', '.git'))):
     """Test to see if this path is a supported bzr branch.
 
     May be bzr or git.
     """
-    for control_dir in ('.bzr', ):
+    for control_dir in control_dirs:
         if os.path.exists(os.path.join(path, control_dir)):
             return True
     return False
