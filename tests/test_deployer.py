@@ -42,7 +42,6 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual('gojuju', d.juju_env)
         self.assertEqual({}, d.services)
         self.assertEqual([], d.relations)
-        d.cleanup()
 
     def test_load(self):
         d = Deployment(juju_env='gojuju')
@@ -60,17 +59,27 @@ class DeployerTests(unittest.TestCase):
         self.assertEqual(dmap['mybundle']['relations'], d.relations)
         self.assertEqual(dmap['mybundle']['series'], d.series)
         add.assert_has_calls([
-            call('wordpress', charm=None, units=1, constraints=None),
-            call('mysql', charm=None, units=1,
-                 constraints={'mem': '2G', 'cpu-cores': '2'})],
+            call('wordpress',
+                 placement=None,
+                 series='raring',
+                 units=1,
+                 branch='lp:~charmers/charms/precise/wordpress/trunk',
+                 constraints=None,
+                 charm=None),
+            call('mysql',
+                 placement=None,
+                 series='raring',
+                 units=1,
+                 branch='lp:~charmers/charms/precise/mysql/trunk',
+                 constraints={'mem': '2G', 'cpu-cores': '2'},
+                 charm=None)],
             any_order=True
         )
         configure.assert_has_calls([
             call('mysql', {'tuning': 'fastest'}),
         ])
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -82,9 +91,8 @@ class DeployerTests(unittest.TestCase):
         d.add('charm')
         self.assertEqual({'charm': {'charm': 'cs:precise/charm',
                                     'num_units': 1}}, d.services)
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_branch(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -95,9 +103,8 @@ class DeployerTests(unittest.TestCase):
         d.add('bar', 'cs:~foo/baz')
         self.assertEqual({'bar': {'branch': 'lp:~foo/charms/precise/baz/trunk',
                                   'num_units': 1}}, d.services)
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_units(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -108,9 +115,8 @@ class DeployerTests(unittest.TestCase):
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
                                     'num_units': 2}}, d.services)
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_constraints(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -128,7 +134,6 @@ class DeployerTests(unittest.TestCase):
                                     'constraints':
                                     'cpu-power=0 cpu-cores=4 mem=512M',
                                     'num_units': 2}}, d.services)
-        d.cleanup()
 
     def _make_mock_status(self, d):
         def _mock_status(juju_env):
@@ -152,7 +157,7 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.helpers.environments')
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_unit(self, mcharm, subprocess, waiter_status, environments,
                       upload_scripts):
         charm = mcharm.return_value
@@ -164,6 +169,7 @@ class DeployerTests(unittest.TestCase):
         environments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
 
         d = Deployment(juju_env='gojuju')
+
         waiter_status.side_effect = self._make_mock_status(d)
         d.add('charm', units=1)
         d.setup()
@@ -173,13 +179,11 @@ class DeployerTests(unittest.TestCase):
         self.assertTrue('charm/1' in d.sentry.unit)
         self.assertEqual(2, d.services['charm']['num_units'])
 
-        d.cleanup()
-
     @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.helpers.environments')
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_unit_error(self, mcharm, subprocess, waiter_status,
                             environments, upload_scripts):
         def mock_unit_error(f, service, unit_name):
@@ -210,9 +214,8 @@ class DeployerTests(unittest.TestCase):
             self.assertRaisesRegexp(
                 Exception, 'Error on unit charm/1: hook failed: install',
                 d.add_unit, 'charm')
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_remove_unit(self, get_charm):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
@@ -226,7 +229,7 @@ class DeployerTests(unittest.TestCase):
         self.assertFalse('charm/0' in sentry.unit)
         self.assertEqual(0, d.services['charm']['num_units'])
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_remove_service(self, get_charm):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
@@ -242,7 +245,7 @@ class DeployerTests(unittest.TestCase):
         self.assertFalse('charm' in d.services)
         self.assertEqual(0, len(d.relations))
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_remove(self, get_charm):
         d = Deployment(juju_env='gojuju')
         d.add('charm1')
@@ -258,21 +261,20 @@ class DeployerTests(unittest.TestCase):
             remove_unit.assert_called_once_with('charm1/0')
             remove_service.assert_called_once_with('charm2')
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_remove_aliases(self, get_charm):
         d = Deployment
         self.assertEqual(d.destroy_unit, d.remove_unit)
         self.assertEqual(d.destroy_service, d.remove_service)
         self.assertEqual(d.destroy, d.remove)
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_error(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         self.assertRaises(ValueError, d.add, 'bar')
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_relate(self, mcharm):
         a = mcharm.return_value
         a.provides = {'f': {'interface': 'test'}}
@@ -283,33 +285,28 @@ class DeployerTests(unittest.TestCase):
         d.add('foo')
         d.relate('foo:f', 'bar:b')
         self.assertEqual(d.relations, [['foo:f', 'bar:b']])
-        d.cleanup()
 
     def test_relate_too_few(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(LookupError, d.relate, 'foo:f')
-        d.cleanup()
 
     def test_relate_no_relation(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo', 'bar:a')
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_relate_relation_nonexist(self, mcharm):
         d = Deployment(juju_env='gojuju')
         d.add('bar')
         d.add('foo')
 
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:b')
-        d.cleanup()
 
     def test_relate_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.relate, 'foo:f', 'bar:a')
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_configure(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -327,15 +324,13 @@ class DeployerTests(unittest.TestCase):
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
                                        'port': 100}}}, d.services)
-        d.cleanup()
 
     def test_configure_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.configure, 'wordpress',
                           {'tuning': 'optimized'})
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_expose(self, mcharm):
         charm = mcharm.return_value
         charm.subordinate = False
@@ -351,14 +346,12 @@ class DeployerTests(unittest.TestCase):
                 {'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
                  'num_units': 1,
                  'expose': True}}, d.services)
-        d.cleanup()
 
     def test_expose_not_deployed(self):
         d = Deployment(juju_env='gojuju')
         self.assertRaises(ValueError, d.expose, 'wordpress')
-        d.cleanup()
 
-    @patch('amulet.deployer.get_charm')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_schema(self, mcharm):
         wpmock = MagicMock()
         mysqlmock = MagicMock()
@@ -395,19 +388,16 @@ class DeployerTests(unittest.TestCase):
             'relations': [['mysql:db', 'wordpress:db']],
         }}
         self.assertEqual(schema, d.schema())
-        d.cleanup()
 
     @patch.dict('os.environ', {'JUJU_TEST_CHARM': 'charmbook'})
     def test_juju_test_charm(self):
         d = Deployment(juju_env='gogo')
         self.assertEqual('charmbook', d.charm_name)
-        d.cleanup()
 
     def test_add_post_deploy(self):
         d = Deployment(juju_env='gogo')
         d.deployed = True
         self.assertRaises(NotImplementedError, d.add, 'mysql')
-        d.cleanup()
 
     def test_relate_before_service_deployed(self):
         d = Deployment(juju_env='gogo')
@@ -416,18 +406,15 @@ class DeployerTests(unittest.TestCase):
             d.relate('mysql:db', 'wordpress:db')
             self.assertEqual(
                 'Can not relate, service not deployed yet', str(e))
-        d.cleanup()
 
     def test_unrelate_not_enough(self):
         d = Deployment(juju_env='gogo')
         self.assertRaises(LookupError, d.unrelate, 'mysql')
-        d.cleanup()
 
     def test_unrelate_too_many(self):
         d = Deployment(juju_env='gogo')
         self.assertRaises(LookupError, d.unrelate,
                           'mysql', 'wordpress', 'charm')
-        d.cleanup()
 
     def test_unrelate_bad_service_format(self):
         d = Deployment(juju_env='gogo')
@@ -436,7 +423,6 @@ class DeployerTests(unittest.TestCase):
             d.unrelate('mysql', 'wordpress')
             self.assertEqual(
                 str(e), 'All relations must be explicit, service:relation')
-        d.cleanup()
 
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):
@@ -448,14 +434,12 @@ class DeployerTests(unittest.TestCase):
             call(['remove-relation',
                   'mysql:db', 'charm:db']),
             ])
-        d.cleanup()
 
     def test_unrelate_post_deploy(self):
         d = Deployment(juju_env='gogo')
         with self.assertRaises(ValueError) as e:
             d.unrelate('mysql:db', 'wordpress:db')
             self.assertEqual('Relation does not exist', str(e))
-        d.cleanup()
 
     @patch('amulet.deployer.juju')
     def test_remove_unit(self, mj):
@@ -464,88 +448,33 @@ class DeployerTests(unittest.TestCase):
         d.deployed = True
         d.remove_unit('mysql/1')
         mj.assert_called_with(['remove-unit', 'mysql/1'])
-        d.cleanup()
 
     def test_remove_unit_env_not_setup(self):
         d = Deployment(juju_env='gogo')
         d.add('mysql', units=2)
         self.assertRaises(NotImplementedError, d.remove_unit, 'mysql/0')
-        d.cleanup()
 
     def test_remove_unit_no_args(self):
         d = Deployment(juju_env='gogo')
         d.add('mysql', units=2)
         d.deployed = True
         self.assertRaises(ValueError, d.remove_unit)
-        d.cleanup()
 
     def test_remove_unit_not_a_unit(self):
         d = Deployment(juju_env='gogo')
         d.add('mysql', units=2)
         d.deployed = True
         self.assertRaises(ValueError, d.remove_unit, 'mysql/1', 'lolk')
-        d.cleanup()
 
     def test_remove_unit_not_deployed(self):
         d = Deployment(juju_env='gogo')
         d.add('mysql', units=2)
         d.deployed = True
         self.assertRaises(ValueError, d.remove_unit, 'wordpress/1')
-        d.cleanup()
-
-    def test_setup(self):
-        pass
 
 
-class CharmCacheTest(unittest.TestCase):
-    def test_init(self):
-        c = CharmCache('mytestcharm')
-        self.assertEqual(c.test_charm, 'mytestcharm')
 
-    @patch('amulet.deployer.get_charm')
-    def test_getitem_service(self, get_charm):
-        c = CharmCache('mytestcharm')
-        charm = c['myservice']
-        self.assertEqual(charm, get_charm.return_value)
-        get_charm.assert_called_once_with('myservice', series='precise')
 
-        get_charm.reset_mock()
-        charm2 = c['myservice']
-        self.assertEqual(charm, charm2)
-        self.assertFalse(get_charm.called)
-
-    @patch('amulet.deployer.get_charm')
-    def test_getitem_testcharm(self, get_charm):
-        c = CharmCache('mytestcharm')
-        charm = c['mytestcharm']
-        self.assertEqual(charm, get_charm.return_value)
-        get_charm.assert_called_once_with(os.getcwd(), series='precise')
-
-    @patch('amulet.deployer.get_charm')
-    def test_fetch_service(self, get_charm):
-        c = CharmCache('mytestcharm')
-        charm = c.fetch('myservice')
-        self.assertEqual(charm, get_charm.return_value)
-        get_charm.assert_called_once_with('myservice', series='precise')
-
-        get_charm.reset_mock()
-        charm2 = c['myservice']
-        self.assertEqual(charm, charm2)
-        self.assertFalse(get_charm.called)
-
-    @patch('amulet.deployer.get_charm')
-    def test_fetch_charm(self, get_charm):
-        c = CharmCache('mytestcharm')
-        charm = c.fetch('myservice', 'anothercharm')
-        self.assertEqual(charm, get_charm.return_value)
-        get_charm.assert_called_once_with('anothercharm', series='precise')
-
-    @patch('amulet.deployer.get_charm')
-    def test_fetch_testcharm(self, get_charm):
-        c = CharmCache('mytestcharm')
-        charm = c.fetch('myservice', 'mytestcharm')
-        self.assertEqual(charm, get_charm.return_value)
-        get_charm.assert_called_once_with(os.getcwd(), series='precise')
 
 
 class GetCharmNameTest(unittest.TestCase):

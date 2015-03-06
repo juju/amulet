@@ -1,15 +1,22 @@
-import os
-import json
 import base64
+import json
+import logging
+import os
+import shlex
 import shutil
 import subprocess
-import tempfile
+import contextlib
 import yaml
+
+from path import path
+from path import tempdir
 
 from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
+from .charm import CharmCache
 
-from .charm import get_charm
+
+logger = logging.getLogger(__name__)
 
 
 def get_charm_name(dir_):
@@ -26,27 +33,9 @@ def get_charm_name(dir_):
         return os.path.basename(dir_)
 
 
-class CharmCache(dict):
-    def __init__(self, test_charm):
-        super(CharmCache, self).__init__()
-        self.test_charm = test_charm
-
-    def __getitem__(self, service):
-        return self.fetch(service)
-
-    def fetch(self, service, charm=None, series='precise'):
-        try:
-            return super(CharmCache, self).__getitem__(service)
-        except KeyError:
-            charm = charm or service
-            self[service] = get_charm(
-                os.getcwd() if charm == self.test_charm else charm,
-                series=series,
-            )
-            return super(CharmCache, self).__getitem__(service)
-
-
 class Deployment(object):
+    log = logger
+
     def __init__(self, juju_env=None, series='precise',
                  juju_deployer='juju-deployer', **kw):
         self.services = {}
@@ -59,16 +48,31 @@ class Deployment(object):
         self.charm_name = get_charm_name(os.getcwd())
 
         self.sentry = None
-        self.deployer = juju_deployer
-        self.deployer_dir = tempfile.mkdtemp(prefix='amulet_deployment_')
+        self.deployer = path(juju_deployer)
+        self.deployer_dir = tempdir(prefix='amulet_deployment_')
 
         if 'JUJU_TEST_CHARM' in os.environ:
             self.charm_name = os.environ['JUJU_TEST_CHARM']
 
         self.charm_cache = CharmCache(self.charm_name)
 
-    def load(self, deploy_cfg):
-        schema = next(iter(deploy_cfg.values()))
+    @classmethod
+    def from_bundle(cls, bundle_file, deployment_name=None):
+        deployment = cls()
+        bundle_file = path(bundle_file)
+        deployment.load_bundle_file(bundle_file, deployment_name)
+        return deployment
+
+    def load_bundle_file(self, bundle_file, deployment_name=None):
+        with open(bundle_file, 'r') as stream:
+            contents = yaml.safe_load(stream)
+        return self.load(contents, deployment_name)
+
+    def load(self, deploy_cfg, deployment_name=None):
+        schema = deploy_cfg.get(deployment_name, None) \
+            or next(iter(deploy_cfg.values()))
+        self.series = schema['series']
+        self.relations = schema['relations']
         for service, service_config in schema['services'].items():
             constraints = service_config.get('constraints')
             if constraints:
@@ -76,26 +80,40 @@ class Deployment(object):
                     constraint.split('=')
                     for constraint in constraints.split()
                 )
+
             self.add(
                 service,
                 charm=service_config.get('charm'),
                 units=service_config.get('num_units', 1),
+                branch=service_config.get('branch', None),
                 constraints=constraints,
+                placement=service_config.get('to', None),
+                series=self.series
             )
+
             if service_config.get('options'):
                 self.configure(service, service_config['options'])
-        self.series = schema['series']
-        self.relations = schema['relations']
 
-    def add(self, service, charm=None, units=1, constraints=None):
+    def add(self, service_name,
+            charm=None,
+            units=1,
+            constraints=None,
+            branch=None,
+            placement=None,
+            series=None):
+
         if self.deployed:
             raise NotImplementedError('Environment already setup')
-        if service in self.services:
+
+        if service_name in self.services:
             raise ValueError('Service is already set to be deployed')
 
-        c = self.charm_cache.fetch(service, charm, self.series)
+        service = self.services[service_name] = {}
 
-        if c.subordinate:
+        charm = self.charm_cache.fetch(service_name, charm,
+                                   branch=branch, series=self.series)
+
+        if charm.subordinate:
             for rtype in ['provides', 'requires']:
                 try:
                     rels = getattr(c, rtype)
@@ -103,26 +121,27 @@ class Deployment(object):
                         rel = rels[relation]
                         if 'scope' in rel and rel['scope'] == 'container':
                             self.subordinates.append('%s:%s' %
-                                                     (service, relation))
-                except:
+                                                     (service_name, relation))
+                except:  # @@ why is this diaper here?
                     pass
 
-        if c.url:
-            self.services[service] = {'charm': c.url}
-        else:
-            self.services[service] = {'branch': c.code_source['location']}
+        source = charm.url and {'charm': charm.url} \
+            or {'branch': charm.code_source['location']}
 
-        self.services[service]['num_units'] = units
+        service.update(source)
 
-        if constraints:
+        service['num_units'] = units
+        if placement is not None:
+            service['to'] = placement
+
+        if constraints is not None:
             if not isinstance(constraints, dict):
                 raise ValueError('Constraints must be specified as a dict')
 
-            r = []
-            for k, v in constraints.items():
-                r.append("%s=%s" % (k, v))
+            r = ["%s=%s" % (k, v) for k, v in constraints.items()]
+            service['constraints'] = " ".join(r)
 
-            self.services[service]['constraints'] = " ".join(r)
+        return service
 
     def add_unit(self, service, units=1):
         if not isinstance(units, int) or units < 1:
@@ -275,6 +294,7 @@ class Deployment(object):
 
         if service not in self.services:
             raise ValueError('Service has not yet been described')
+
         if not 'options' in self.services[service]:
             self.services[service]['options'] = options
         else:
@@ -288,6 +308,19 @@ class Deployment(object):
             raise ValueError('%s has not yet been described' % service)
         self.services[service]['expose'] = True
 
+    @contextlib.contextmanager
+    def deploy_w_timeout_and_dir(self, timeout, deploy_dir):
+        """
+        :param timeout: Amount of time to wait for deployment to complete.
+        :param deploy_dir: working directory for deployment command to run
+
+        Sets timeout and working directory for wrapped block. If successful,
+        sets instance.deployed.
+        """
+        with self.deployer_dir, unit_timesout(timeout):
+            yield
+        self.deployed = True
+
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
@@ -299,32 +332,28 @@ class Deployment(object):
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
-        _, s = tempfile.mkstemp(prefix='amulet-juju-deployer-', suffix='.json')
-        with open(s, 'w') as f:
-            f.write(json.dumps(self.schema()))
+        with tempdir(prefix='amulet-juju-deployer-') as tmpdir:
+            schema_json = json.dumps(self.schema(), indent=2)
+            self.log.debug("Deployer schema\n%s", schema_json)
 
-        try:
-            with unit_timesout(timeout):
-                subprocess.check_call([
-                    os.path.expanduser(self.deployer),
-                    '-W', '-L',
-                    '-c', s,
-                    '-e', self.juju_env,
-                    '-t', str(timeout + 100),  # ensure timeout before deployer
-                    self.juju_env,
-                ], cwd=self.deployer_dir)
-            self.deployed = True
-        except subprocess.CalledProcessError:
-            raise
-        finally:
-            if cleanup:
-                os.remove(s)
+            schema_file = tmpdir / 'deployer-schema.json'
+            schema_file.write_text(schema_json)
 
-        if not self.deployed:
-            raise Exception('Deployment failed for an unknown reason')
+            cmd = "{deployer} -W -L -c {schema} -e {env} -t {timeout} {env}"
+            cmd_args = dict(deployer=self.deployer.expanduser(),
+                            schema=schema_file,
+                            env=self.juju_env,
+                            timeout=str(timeout + 100))
+            cmd = cmd.format(**cmd_args)
+            self.log.debug(cmd)
 
-        if self.deployed:
-            self.sentry = Talisman(self.services)
+            with self.deploy_w_timeout_and_dir(timeout, self.deployer_dir):
+                subprocess.check_call(shlex.split(cmd))
+
+        self.sentry = Talisman(self.services)
+        if cleanup is False:
+            tmpdir.makedirs()
+            (tmpdir / 'deployer-schema.json').write_text(schema_json)
 
     def deployer_map(self, services, relations):
         deployer_map = {
@@ -343,6 +372,3 @@ class Deployment(object):
             relations.append(rel)
 
         return relations
-
-    def cleanup(self):
-        shutil.rmtree(self.deployer_dir)

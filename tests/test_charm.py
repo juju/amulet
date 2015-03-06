@@ -6,13 +6,12 @@ import yaml
 
 from mock import patch, call
 
-from amulet.charm import (
-    run_bzr,
-    LocalCharm,
-    setup_bzr,
-    get_charm,
-    is_branch,
-)
+from amulet.charm import CharmCache
+from amulet.charm import LocalCharm
+from amulet.charm import is_branch
+from amulet.charm import run_bzr
+from amulet.charm import setup_bzr
+
 
 
 class RunBzrTest(unittest.TestCase):
@@ -105,14 +104,68 @@ class GetCharmTest(unittest.TestCase):
     def test_local(self):
         with patch('amulet.charm.LocalCharm') as LocalCharm:
             with patch.dict('amulet.charm.os.environ', {}):
-                get_charm('local:precise/mycharm')
+                CharmCache.get_charm('local:precise/mycharm')
                 LocalCharm.assert_called_once_with('precise/mycharm')
                 LocalCharm.reset_mock()
 
             with patch.dict('amulet.charm.os.environ', {
                     'JUJU_REPOSITORY': '~/charms'}):
-                get_charm('local:precise/mycharm')
+                CharmCache.get_charm('local:precise/mycharm')
                 LocalCharm.assert_called_once_with('~/charms/precise/mycharm')
+
+
+class CharmCacheTest(unittest.TestCase):
+    def test_init(self):
+        c = CharmCache('mytestcharm')
+        self.assertEqual(c.test_charm, 'mytestcharm')
+
+    def test_getitem_service(self):
+        c = CharmCache('mytestcharm')
+        with patch.object(c, 'get_charm') as get_charm:
+            charm = c['myservice']
+            self.assertEqual(charm, get_charm.return_value)
+            get_charm.assert_called_once_with('myservice', branch=None,
+                                              series='precise')
+            get_charm.reset_mock()
+            charm2 = c['myservice']
+            self.assertEqual(charm, charm2)
+            self.assertFalse(get_charm.called)
+
+    def test_getitem_testcharm(self):
+        c = CharmCache('mytestcharm')
+        with patch.object(c, 'get_charm') as get_charm:
+            charm = c['mytestcharm']
+            self.assertEqual(charm, get_charm.return_value)
+            get_charm.assert_called_once_with(os.getcwd(), branch=None,
+                                              series='precise')
+
+    def test_fetch_service(self):
+        c = CharmCache('mytestcharm')
+        with patch.object(c, 'get_charm') as get_charm:
+            charm = c.fetch('myservice')
+            self.assertEqual(charm, get_charm.return_value)
+            get_charm.assert_called_once_with('myservice', branch=None,
+                                              series='precise')
+
+        get_charm.reset_mock()
+        charm2 = c['myservice']
+        self.assertEqual(charm, charm2)
+        self.assertFalse(get_charm.called)
+
+    def test_fetch_charm(self):
+        c = CharmCache('mytestcharm')
+        with patch.object(c, 'get_charm') as get_charm:
+            charm = c.fetch('myservice', 'anothercharm')
+            self.assertEqual(charm, get_charm.return_value)
+            get_charm.assert_called_once_with('anothercharm', branch=None, series='precise')
+
+    def test_fetch_testcharm(self):
+        c = CharmCache('mytestcharm')
+        with patch.object(c, 'get_charm') as get_charm:
+            charm = c.fetch('myservice', 'mytestcharm')
+            self.assertEqual(charm, get_charm.return_value)
+            get_charm.assert_called_once_with(os.getcwd(), branch=None,
+                                              series='precise')
 
 
 class IsBranchTest(unittest.TestCase):
