@@ -166,6 +166,12 @@ class Talisman(object):
             for unit in service_status['units']:
                 unit_data = service_status['units'][unit]
                 self.unit[unit] = UnitSentry.fromunitdata(unit, unit_data)
+                if 'subordinates' in unit_data:
+                    for sub in unit_data['subordinates']:
+                        if sub.split('/')[0] not in services:
+                            continue
+                        subdata = unit_data['subordinates'][sub]
+                        self.unit[sub] = UnitSentry.fromunitdata(sub, subdata)
 
     def __getitem__(self, service):
         """Return the UnitSentry object(s) for ``service``
