@@ -31,6 +31,9 @@ class TestDeployment(unittest.TestCase):
             'mkdir -p /tmp/amulet-test/test-dir;'
             'echo contents > /tmp/amulet-test/test-file;'
         )
+        cls.rsyslogfwd.run(
+            'echo more-contents > /tmp/amulet-sub-test;'
+        )
 
     def test_info(self):
         self.assertTrue('public-address' in self.nagios.info)
@@ -56,6 +59,13 @@ class TestDeployment(unittest.TestCase):
         self.assertEqual(
             self.nagios.file_contents(path),
             'contents\n',
+        )
+
+    def test_subordinate_file_contents(self):
+        path = '/tmp/amulet-sub-test'
+        self.assertEqual(
+            self.rsyslogfwd.file_contents(path),
+            'more-contents\n',
         )
 
     def test_directory_stat(self):
