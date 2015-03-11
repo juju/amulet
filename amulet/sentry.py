@@ -155,13 +155,13 @@ class Talisman(object):
         status = self.wait_for_status(juju_env, services)
 
         for service in services:
-            if not service in status['services']:
+            if service not in status['services']:
                 continue  # Raise something?
 
             service_status = status['services'][service]
 
-            if not 'units' in service_status:
-                continue  # It's a subordinate
+            if 'units' not in service_status:
+                continue
 
             for unit in service_status['units']:
                 unit_data = service_status['units'][unit]
