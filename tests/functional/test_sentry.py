@@ -7,11 +7,12 @@ class TestDeployment(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.deployment = amulet.Deployment()
+        cls.deployment = amulet.Deployment(series='trusty')
 
-        cls.deployment.add('pictor')
+        cls.deployment.add('nagios')
         cls.deployment.add('haproxy')
-        cls.deployment.relate('pictor:website', 'haproxy:reverseproxy')
+        cls.deployment.relate('nagios:website', 'haproxy:reverseproxy')
+        cls.deployment.relate('nagios:juju-info', 'rsyslog-forwarder:juju-info')
 
         try:
             cls.deployment.setup(timeout=900)
@@ -22,22 +23,22 @@ class TestDeployment(unittest.TestCase):
         except:
             raise
 
-        cls.pictor = cls.deployment.sentry['pictor/0']
+        cls.nagios = cls.deployment.sentry['nagios/0']
         cls.haproxy = cls.deployment.sentry['haproxy/0']
-        cls.pictor.run(
+        cls.nagios.run(
             'mkdir -p /tmp/amulet-test/test-dir;'
             'echo contents > /tmp/amulet-test/test-file;'
         )
 
     def test_info(self):
-        self.assertTrue('public-address' in self.pictor.info)
-        self.assertEqual('pictor', self.pictor.info['service'])
-        self.assertEqual('0', self.pictor.info['unit'])
-        self.assertEqual('pictor/0', self.pictor.info['unit_name'])
+        self.assertTrue('public-address' in self.nagios.info)
+        self.assertEqual('nagios', self.nagios.info['service'])
+        self.assertEqual('0', self.nagios.info['unit'])
+        self.assertEqual('nagios/0', self.nagios.info['unit_name'])
 
     def test_file_stat(self):
         path = '/tmp/amulet-test/test-file'
-        stat = self.pictor.file_stat(path)
+        stat = self.nagios.file_stat(path)
         self.assertTrue(stat.pop('mtime'))
         self.assertEqual(
             stat, {
@@ -51,13 +52,13 @@ class TestDeployment(unittest.TestCase):
     def test_file_contents(self):
         path = '/tmp/amulet-test/test-file'
         self.assertEqual(
-            self.pictor.file_contents(path),
+            self.nagios.file_contents(path),
             'contents\n',
         )
 
     def test_directory_stat(self):
         path = '/tmp/amulet-test'
-        stat = self.pictor.directory_stat(path)
+        stat = self.nagios.directory_stat(path)
         self.assertTrue(stat.pop('mtime'))
         self.assertEqual(
             stat, {
@@ -71,25 +72,25 @@ class TestDeployment(unittest.TestCase):
     def test_directory_listing(self):
         path = '/tmp/amulet-test'
         self.assertEqual(
-            self.pictor.directory_listing(path), {
+            self.nagios.directory_listing(path), {
                 'files': ['test-file'],
                 'directories': ['test-dir'],
             },
         )
 
     def test_relation(self):
-        pictor_info = self.pictor.relation(
+        nagios_info = self.nagios.relation(
             'website', 'haproxy:reverseproxy')
         for key in ['hostname', 'port', 'private-address']:
-            self.assertTrue(key in pictor_info)
+            self.assertTrue(key in nagios_info)
 
         haproxy_info = self.haproxy.relation(
-            'reverseproxy', 'pictor:website')
+            'reverseproxy', 'nagios:website')
         self.assertEqual(list(haproxy_info.keys()), ['private-address'])
 
     def test_run(self):
         self.assertEqual(
-            self.pictor.run('echo hello'),
+            self.nagios.run('echo hello'),
             ('hello', 0),
         )
 
