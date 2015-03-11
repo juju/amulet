@@ -63,4 +63,4 @@ class TalismanTest(unittest.TestCase):
 
         sentry = Talisman(['meteor', 'rsyslog-forwarder'])
 
-        self.assertEqual(sentry['rsyslog-forwarder/0'], sentry.unit['rsyslog-forwarder/0'])
+        self.assertTrue('rsyslog-forwarder/0' in sentry.unit)
