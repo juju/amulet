@@ -93,7 +93,7 @@ Please refer to the Developer Documentation for a list of supported subcommands 
 
 # Core functionality
 
-This section is deigned to outline the core functions of Amulet. Again, please refer to the developer documentation for an exhaustive list of functions and methods.
+This section is designed to outline the core functions of Amulet. Again, please refer to the developer documentation for an exhaustive list of functions and methods.
 
 ## amulet.deployer
 
