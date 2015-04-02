@@ -4,3 +4,7 @@ nose
 mock
 cherrypy
 pyyaml
+path.py
+charmworldlib
+requests
+juju-deployer
