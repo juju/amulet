@@ -2,6 +2,7 @@ import glob
 import json
 import os
 import subprocess
+import time
 
 import pkg_resources
 
@@ -254,15 +255,16 @@ class Talisman(object):
             raise
 
     def wait(self, timeout=300):
-        #for unit in self.unit:
         ready = False
         try:
+            now = time.time()
             with helpers.timeout(timeout):
                 # Make sure we're in a 'started' state across the board
-                waiter.wait(timeout=timeout)
-                while not ready:
+                while not ready and now + timeout < time.time():
+                    waiter.wait(timeout=15)
                     for unit in self.unit.keys():
                         status = self.unit[unit].juju_agent()
+
                         # Check if we have a hook key and it's not None
                         if status is None:
                             ready = False
@@ -272,6 +274,7 @@ class Talisman(object):
                             break
                         else:
                             ready = True
+
         except:
             raise
 
