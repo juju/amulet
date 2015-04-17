@@ -224,7 +224,11 @@ class Talisman(object):
 
     def wait_for_status(self, juju_env, services, timeout=300):
         """Return env status, but only after all units have a
-        public-address assigned.
+        public-address assigned and are in a 'started' state.
+
+        Some substrates (like Amazon) will return a public-address while the
+        machine is still allocating, so it's necessary to also check the
+        agent-state to see if the unit is ready.
 
         Raises if a unit reaches error state, or if public-address not
         available for all units before timeout expires.
@@ -236,7 +240,7 @@ class Talisman(object):
                     ready = True
                     status = waiter.status(juju_env)
                     for service in services:
-                        if not 'units' in status['services'][service]:
+                        if 'units' not in status['services'][service]:
                             continue
                         for unit, unit_dict in \
                                 status['services'][service]['units'].items():
@@ -244,6 +248,8 @@ class Talisman(object):
                                 raise Exception('Error on unit {}: {}'.format(
                                     unit, unit_dict.get('agent-state-info')))
                             if 'public-address' not in unit_dict:
+                                ready = False
+                            if 'started' != unit_dict.get('agent-state'):
                                 ready = False
                     if ready:
                         return status
@@ -257,24 +263,24 @@ class Talisman(object):
     def wait(self, timeout=300):
         ready = False
         try:
-            now = time.time()
             with helpers.timeout(timeout):
                 # Make sure we're in a 'started' state across the board
+                now = time.time()
                 while not ready and now + timeout < time.time():
                     waiter.wait(timeout=15)
                     for unit in self.unit.keys():
-                        status = self.unit[unit].juju_agent()
+                        if unit['agent-state'] == 'started':
+                            status = self.unit[unit].juju_agent()
 
-                        # Check if we have a hook key and it's not None
-                        if status is None:
-                            ready = False
-                            break
-                        if 'hook' in status and status['hook']:
-                            ready = False
-                            break
-                        else:
-                            ready = True
-
+                            # Check if we have a hook key and it's not None
+                            if status is None:
+                                ready = False
+                                break
+                            if 'hook' in status and status['hook']:
+                                ready = False
+                                break
+                            else:
+                                ready = True
         except:
             raise
 
