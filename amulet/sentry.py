@@ -40,7 +40,7 @@ class Sentry(object):
     def directory_listing(self, *args):
         raise NotImplemented()
 
-    def juju_agent(self):
+    def juju_agent(self, timeout):
         raise NotImplemented()
 
 
@@ -94,9 +94,20 @@ class UnitSentry(Sentry):
         output, code = self._run(command)
         return output.strip(), code
 
-    def _run(self, command, unit=None):
+    def _run(self, command, unit=None, timeout=300):
+        """
+        Run a command against an individual unit.
+
+        The timeout defaults to 5m to match the `juju run` command, but can
+        be increased to wait for other running hook contexts to complete.
+        """
         unit = unit or self.info['unit_name']
-        cmd = ['juju', 'run', '--unit', unit, command]
+        cmd = [
+            'juju', 'run',
+            '--unit', unit,
+            '--timeout', "%ds" % timeout,
+            command
+        ]
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -106,16 +117,16 @@ class UnitSentry(Sentry):
         output = stdout if p.returncode == 0 else stderr
         return output.decode('utf8'), p.returncode
 
-    def _run_unit_script(self, cmd):
+    def _run_unit_script(self, cmd, timeout=300):
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self._run(cmd)
+        output, return_code = self._run(cmd, timeout=timeout)
         if return_code == 0:
             return json.loads(output)
         else:
             raise IOError(output)
 
-    def juju_agent(self):
-        return self._run_unit_script("juju_agent.py")
+    def juju_agent(self, timeout=300):
+        return self._run_unit_script("juju_agent.py", timeout)
 
     def relation(self, from_rel, to_rel):
         this_unit = '{service}/{unit}'.format(**self.info)
@@ -261,26 +272,30 @@ class Talisman(object):
             raise
 
     def wait(self, timeout=300):
+        """
+        wait_for_status, called by __init__, blocks until units are in a
+        started state. Here we wait for a unit to finish any running hooks.
+        When the unit is done, juju_agent will return {}. Otherwise, it returns
+        a dict with the name of the running hook.
+
+        Raises an error if the timeout is exceeded.
+        """
         ready = False
         try:
             with helpers.timeout(timeout):
-                # Make sure we're in a 'started' state across the board
-                now = time.time()
-                while not ready and now + timeout < time.time():
-                    waiter.wait(timeout=15)
+                while not ready:
                     for unit in self.unit.keys():
-                        if unit['agent-state'] == 'started':
-                            status = self.unit[unit].juju_agent()
+                        status = self.unit[unit].juju_agent(timeout=timeout)
 
-                            # Check if we have a hook key and it's not None
-                            if status is None:
-                                ready = False
-                                break
-                            if 'hook' in status and status['hook']:
-                                ready = False
-                                break
-                            else:
-                                ready = True
+                        # Check if we have a hook key and it's not None
+                        if status is None:
+                            ready = False
+                            break
+                        if 'hook' in status and status['hook']:
+                            ready = False
+                            break
+                        else:
+                            ready = True
         except:
             raise
 
