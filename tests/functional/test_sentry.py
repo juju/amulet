@@ -7,7 +7,7 @@ class TestDeployment(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.deployment = amulet.Deployment(series='trusty')
+        cls.deployment = amulet.Deployment(series='precise')
 
         cls.deployment.add('nagios')
         cls.deployment.add('haproxy')
