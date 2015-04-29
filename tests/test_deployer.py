@@ -145,10 +145,12 @@ class DeployerTests(unittest.TestCase):
                     total_units += 1
                     status['services'][service]['units'][
                         '{}/{}'.format(service, unit)] = {
+                        'agent-state': 'started',
                         'public-address': '10.0.3.{}'.format(total_units)}
             status['services']['relation-sentry'] = {
                 'units': {
                     'relation-sentry/0': {
+                        'agent-state': 'started',
                         'public-address': '10.0.3.1'}}}
             return status
         return _mock_status

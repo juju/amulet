@@ -103,11 +103,15 @@ class LaunchpadCharmTest(unittest.TestCase):
 class GetCharmTest(unittest.TestCase):
     def test_local(self):
         with patch('amulet.charm.LocalCharm') as LocalCharm:
-            with patch.dict('amulet.charm.os.environ', {}):
+
+            # Patch w/o JUJU_REPOSITORY
+            with patch.dict('amulet.charm.os.environ', {
+                    'JUJU_REPOSITORY': ''}):
                 CharmCache.get_charm('local:precise/mycharm')
                 LocalCharm.assert_called_once_with('precise/mycharm')
                 LocalCharm.reset_mock()
 
+            # Patch w/JUJU_REPOSITORY
             with patch.dict('amulet.charm.os.environ', {
                     'JUJU_REPOSITORY': '~/charms'}):
                 CharmCache.get_charm('local:precise/mycharm')

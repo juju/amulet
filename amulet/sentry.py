@@ -2,6 +2,7 @@ import glob
 import json
 import os
 import subprocess
+import time
 
 import pkg_resources
 
@@ -39,7 +40,7 @@ class Sentry(object):
     def directory_listing(self, *args):
         raise NotImplemented()
 
-    def juju_agent(self):
+    def juju_agent(self, timeout):
         raise NotImplemented()
 
 
@@ -93,9 +94,20 @@ class UnitSentry(Sentry):
         output, code = self._run(command)
         return output.strip(), code
 
-    def _run(self, command, unit=None):
+    def _run(self, command, unit=None, timeout=300):
+        """
+        Run a command against an individual unit.
+
+        The timeout defaults to 5m to match the `juju run` command, but can
+        be increased to wait for other running hook contexts to complete.
+        """
         unit = unit or self.info['unit_name']
-        cmd = ['juju', 'run', '--unit', unit, command]
+        cmd = [
+            'juju', 'run',
+            '--unit', unit,
+            '--timeout', "%ds" % timeout,
+            command
+        ]
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -105,16 +117,16 @@ class UnitSentry(Sentry):
         output = stdout if p.returncode == 0 else stderr
         return output.decode('utf8'), p.returncode
 
-    def _run_unit_script(self, cmd):
+    def _run_unit_script(self, cmd, timeout=300):
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self._run(cmd)
+        output, return_code = self._run(cmd, timeout=timeout)
         if return_code == 0:
             return json.loads(output)
         else:
             raise IOError(output)
 
-    def juju_agent(self):
-        return self._run_unit_script("juju_agent.py")
+    def juju_agent(self, timeout=300):
+        return self._run_unit_script("juju_agent.py", timeout)
 
     def relation(self, from_rel, to_rel):
         this_unit = '{service}/{unit}'.format(**self.info)
@@ -223,7 +235,11 @@ class Talisman(object):
 
     def wait_for_status(self, juju_env, services, timeout=300):
         """Return env status, but only after all units have a
-        public-address assigned.
+        public-address assigned and are in a 'started' state.
+
+        Some substrates (like Amazon) will return a public-address while the
+        machine is still allocating, so it's necessary to also check the
+        agent-state to see if the unit is ready.
 
         Raises if a unit reaches error state, or if public-address not
         available for all units before timeout expires.
@@ -235,7 +251,7 @@ class Talisman(object):
                     ready = True
                     status = waiter.status(juju_env)
                     for service in services:
-                        if not 'units' in status['services'][service]:
+                        if 'units' not in status['services'][service]:
                             continue
                         for unit, unit_dict in \
                                 status['services'][service]['units'].items():
@@ -243,6 +259,8 @@ class Talisman(object):
                                 raise Exception('Error on unit {}: {}'.format(
                                     unit, unit_dict.get('agent-state-info')))
                             if 'public-address' not in unit_dict:
+                                ready = False
+                            if 'started' != unit_dict.get('agent-state'):
                                 ready = False
                     if ready:
                         return status
@@ -254,15 +272,21 @@ class Talisman(object):
             raise
 
     def wait(self, timeout=300):
-        #for unit in self.unit:
+        """
+        wait_for_status, called by __init__, blocks until units are in a
+        started state. Here we wait for a unit to finish any running hooks.
+        When the unit is done, juju_agent will return {}. Otherwise, it returns
+        a dict with the name of the running hook.
+
+        Raises an error if the timeout is exceeded.
+        """
         ready = False
         try:
             with helpers.timeout(timeout):
-                # Make sure we're in a 'started' state across the board
-                waiter.wait(timeout=timeout)
                 while not ready:
                     for unit in self.unit.keys():
-                        status = self.unit[unit].juju_agent()
+                        status = self.unit[unit].juju_agent(timeout=timeout)
+
                         # Check if we have a hook key and it's not None
                         if status is None:
                             ready = False
