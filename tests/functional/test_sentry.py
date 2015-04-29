@@ -35,6 +35,14 @@ class TestDeployment(unittest.TestCase):
             'echo more-contents > /tmp/amulet-sub-test;'
         )
 
+
+    def test_add_unit(self):
+         self.deployment.add_unit('haproxy')
+         haproxy = self.deployment.sentry['haproxy/1']
+         self.assertEqual('1', haproxy.info['unit'])
+         self.assertEqual('haproxy/1', haproxy.info['unit_name'])
+
+
     def test_info(self):
         self.assertTrue('public-address' in self.nagios.info)
         self.assertEqual('nagios', self.nagios.info['service'])
