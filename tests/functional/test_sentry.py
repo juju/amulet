@@ -80,9 +80,15 @@ class TestDeployment(unittest.TestCase):
         path = '/tmp/amulet-test'
         stat = self.nagios.directory_stat(path)
         self.assertTrue(stat.pop('mtime'))
+
+        """
+        The block size is dependent on the file system used.
+        btrfs defaults to 16k, ext2/3/4 defaults to 4k, etc.
+        In this case, trust the stat size returned from the unit.
+        """
         self.assertEqual(
             stat, {
-                'size': 4096,
+                'size': stat['size'],
                 'uid': 0,
                 'gid': 0,
                 'mode': '040755',
