@@ -4,3 +4,6 @@ nose
 mock
 cherrypy
 pyyaml
+requests
+path.py
+charmworldlib
