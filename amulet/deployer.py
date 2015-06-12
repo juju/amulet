@@ -143,9 +143,12 @@ class Deployment(object):
 
         return service
 
-    def add_unit(self, service, units=1):
+    def add_unit(self, service, units=1, target=None):
         if not isinstance(units, int) or units < 1:
             raise ValueError('Only positive integers can be used for units')
+        if target is not None and units != 1:
+            raise ValueError(
+                "Can't deploy more than one unit when specifying a target.")
         if service not in self.services:
             raise ValueError('Service needs to be added before you can scale')
 
@@ -153,7 +156,10 @@ class Deployment(object):
             self.services[service].get('num_units', 1) + units
 
         if self.deployed:
-            juju(['add-unit', service, '-n', str(units)])
+            args = ['add-unit', service, '-n', str(units)]
+            if target is not None:
+                args.extend(["--to", target])
+            juju(args)
             self.sentry = Talisman(self.services)
 
     def remove_unit(self, *units):
