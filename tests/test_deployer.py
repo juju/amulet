@@ -186,6 +186,36 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.sentry.waiter.status')
     @patch('amulet.deployer.subprocess')
     @patch('amulet.charm.CharmCache.get_charm')
+    def test_add_unit_target(self, mcharm, subprocess, waiter_status,
+                             environments, upload_scripts):
+        """
+        If target is given to Deployment.add_unit(), the 'juju' call
+        will includde --to to make the unit be added to the given
+        target.
+        """
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+        charm.series = 'precise'
+
+        environments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
+
+        d = Deployment(juju_env='gojuju')
+
+        waiter_status.side_effect = self._make_mock_status(d)
+        d.add('charm', units=1)
+        d.setup()
+        with patch('amulet.deployer.juju') as j:
+            d.add_unit('charm', target='lxc:0')
+            j.assert_called_with(
+                ['add-unit', 'charm', '-n', '1', '--to', 'lxc:0'])
+
+    @patch.object(UnitSentry, 'upload_scripts')
+    @patch('amulet.helpers.environments')
+    @patch('amulet.sentry.waiter.status')
+    @patch('amulet.deployer.subprocess')
+    @patch('amulet.charm.CharmCache.get_charm')
     def test_add_unit_error(self, mcharm, subprocess, waiter_status,
                             environments, upload_scripts):
         def mock_unit_error(f, service, unit_name):
