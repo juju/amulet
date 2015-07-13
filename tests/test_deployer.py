@@ -46,15 +46,16 @@ class DeployerTests(unittest.TestCase):
     def test_load(self):
         d = Deployment(juju_env='gojuju')
         schema = '{"mybundle": {"series": "raring", "services": {"wordpress": \
-                  {"branch": "lp:~charmers/charms/precise/wordpress/trunk"}, \
-                  "mysql": {"options": {"tuning": "fastest"}, \
-                  "constraints": "mem=2G cpu-cores=2", \
+                  {"branch": "lp:~charmers/charms/precise/wordpress/trunk", \
+                  "expose": true}, "mysql": {"options": {"tuning": \
+                  "fastest"}, "constraints": "mem=2G cpu-cores=2", \
                   "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
                   "relations": [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
         with patch.object(d, 'add') as add:
             with patch.object(d, 'configure') as configure:
-                d.load(dmap)
+                with patch.object(d, 'expose') as expose:
+                    d.load(dmap)
         self.assertEqual(d.juju_env, 'gojuju')
         self.assertEqual(dmap['mybundle']['relations'], d.relations)
         self.assertEqual(dmap['mybundle']['series'], d.series)
@@ -77,6 +78,9 @@ class DeployerTests(unittest.TestCase):
         )
         configure.assert_has_calls([
             call('mysql', {'tuning': 'fastest'}),
+        ])
+        expose.assert_has_calls([
+            call('wordpress'),
         ])
 
     @patch('amulet.charm.CharmCache.get_charm')

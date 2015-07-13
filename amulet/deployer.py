@@ -94,6 +94,9 @@ class Deployment(object):
             if service_config.get('options'):
                 self.configure(service, service_config['options'])
 
+            if service_config.get('expose'):
+                self.expose(service)
+
     def add(self, service_name,
             charm=None,
             units=1,
