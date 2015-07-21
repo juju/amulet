@@ -461,6 +461,71 @@ class DeployerTests(unittest.TestCase):
                 str(e), 'All relations must be explicit, service:relation')
 
     @patch('amulet.deployer.juju')
+    def test_action_defined(self, mj):
+        mj.return_value = '{"action": "description"}'
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        actions = d.action_defined('mysql')
+        self.assertEquals(actions, {"action": "description"})
+        mj.assert_has_calls([call(['action', 'defined', 'mysql', '--format', 'json'])])
+
+    @patch('amulet.deployer.juju')
+    def test_action_do(self, mj):
+        mj.return_value = '{"Action queued with id": "some-action-id"}'
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        self.assertEquals(uuid, "some-action-id")
+        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json'])])
+
+    @patch('amulet.deployer.juju')
+    def test_action_fetch(self, mj):
+        mj.side_effect = ['{"Action queued with id": "some-action-id"}',
+                          '{"results":{"key":"value"},"status":"completed",'\
+                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'\
+                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'\
+                          '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run', {"action_param": "action_value"})
+        self.assertEquals(uuid, "some-action-id")
+        results = d.action_fetch(uuid)
+        self.assertEquals(results, {'key': 'value'})
+        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
+                         call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+
+    @patch('amulet.deployer.juju')
+    def test_action_fetch_nowait_fail(self, mj):
+        mj.side_effect = ['{"Action queued with id": "some-action-id"}',
+                          '{"status":"running",'\
+                          '"timing":{"enqueued":"2015-07-21 09:50:59 +0300 EEST",'\
+                          '"started":"2015-07-21 09:51:04 +0300 EEST"}}']
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        self.assertEquals(uuid, "some-action-id")
+        results = d.action_fetch(uuid, timeout=None)
+        self.assertEquals(results, {})
+        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                             call(['action', 'fetch', 'some-action-id', '--format', 'json'])])
+
+    @patch('amulet.deployer.juju')
+    def test_action_fetch_wait(self, mj):
+        mj.side_effect = ['{"Action queued with id": "some-action-id"}',
+                          '{"results":{"key":"value"},"status":"completed",'\
+                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'\
+                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'\
+                          '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        self.assertEquals(uuid, "some-action-id")
+        results = d.action_fetch(uuid)
+        self.assertEquals(results, {'key': 'value'})
+        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                             call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        
+    @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):
         d = Deployment(juju_env='gogo')
         d._relate('mysql:db', 'charm:db')
