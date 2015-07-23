@@ -1,13 +1,14 @@
 import base64
+import contextlib
 import json
 import logging
 import os
 import shlex
 import shutil
 import subprocess
-import contextlib
 import yaml
 
+from time import time, sleep
 from path import path
 from path import tempdir
 
@@ -15,9 +16,7 @@ from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 from .charm import CharmCache
 
-
 logger = logging.getLogger(__name__)
-
 
 def get_charm_name(dir_):
     """Given a directory, return the name of the charm in that dir.
@@ -330,6 +329,50 @@ class Deployment(object):
             yield
         self.deployed = True
 
+    def action_defined(self, service):
+        """
+        :param service: Name of service to get list of defined actions for.
+
+        Returns the list of actions defined for the service.
+        """
+        if service not in self.services:
+            raise ValueError('Service needs to be added before listing actions.')
+        raw = juju(['action', 'defined', service, '--format', 'json'])
+        return json.loads(raw)
+
+    def action_do(self, unit, action, action_args={}):
+        """
+        :param unit: Unit to run action on.
+        :param action: Action to run.
+        :param action_args: Action parameters.
+
+        Runs specified action on specified unit and returns the uuid to fetch results by.
+        """
+        if '/' not in unit:
+            raise ValueError('%s is not a unit' % unit)
+        cmd = ['action', 'do', unit, action, '--format', 'json']
+        for key, value in action_args.items():
+            cmd += ["%s=%s" % (str(key), str(value))]
+        result = juju(cmd)
+        action_result = json.loads(result)
+        results_id = action_result["Action queued with id"]
+        return results_id
+
+    def action_fetch(self, action_id, timeout=600):
+        """
+        :param action_id: Id of the action to fetch results for.
+        """
+        cmd = ['action', 'fetch', action_id, '--format', 'json']
+        if timeout is not None:
+            cmd += ["--wait", str(timeout)]
+        raw = juju(cmd)
+        result = json.loads(raw)
+        status = result['status']
+        if status == 'completed':
+            if 'results' in result:
+                return result['results']
+        return {}
+        
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
