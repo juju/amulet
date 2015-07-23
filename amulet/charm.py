@@ -1,15 +1,17 @@
-from .helpers import reify
-from .helpers import run_bzr
-from .helpers import setup_bzr
-from charmworldlib.charm import Charm
-from path import path
-from path import tempdir
+import atexit
 import os
 import shlex
 import shutil
 import subprocess
 import tempfile
 import yaml
+
+from .helpers import reify
+from .helpers import run_bzr
+from .helpers import setup_bzr
+from charmworldlib.charm import Charm
+from path import path
+from path import tempdir
 
 
 class CharmCache(dict):
@@ -94,6 +96,7 @@ class LocalCharm(object):
     def _make_temp_copy(self, path):
         d = tempfile.mkdtemp(prefix='charm')
         temp_charm_dir = os.path.join(d, os.path.basename(path))
+        atexit.register(shutil.rmtree, temp_charm_dir)
 
         def ignore(src, names):
             return ['.git', '.bzr']
@@ -103,7 +106,6 @@ class LocalCharm(object):
         run_bzr(["add", "."], temp_charm_dir)
         run_bzr(["commit", "--unchanged", "-m", "Copied from {}".format(path)],
                 temp_charm_dir)
-        self.temp_dir = d
         return temp_charm_dir
 
     def _parse(self, metadata):
@@ -125,11 +127,6 @@ class LocalCharm(object):
 
     def __repr__(self):
         return '<LocalCharm %s>' % self.code_source['location']
-
-    def __del__(self):
-        temp_dir = getattr(self, 'temp_dir', None)
-        if temp_dir:
-            shutil.rmtree(temp_dir)
 
 
 class VCSCharm(object):

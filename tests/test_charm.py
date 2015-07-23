@@ -13,7 +13,6 @@ from amulet.charm import run_bzr
 from amulet.charm import setup_bzr
 
 
-
 class RunBzrTest(unittest.TestCase):
     def test_run_bzr(self):
         out = run_bzr(["rocks"], ".")
@@ -92,9 +91,6 @@ class LocalCharmTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(
             code_source, 'metadata.yaml')))
 
-        del c
-        self.assertFalse(os.path.exists(os.path.join(code_source, '../')))
-
 
 class LaunchpadCharmTest(unittest.TestCase):
     pass
@@ -161,7 +157,8 @@ class CharmCacheTest(unittest.TestCase):
         with patch.object(c, 'get_charm') as get_charm:
             charm = c.fetch('myservice', 'anothercharm')
             self.assertEqual(charm, get_charm.return_value)
-            get_charm.assert_called_once_with('anothercharm', branch=None, series='precise')
+            get_charm.assert_called_once_with(
+                'anothercharm', branch=None, series='precise')
 
     def test_fetch_testcharm(self):
         c = CharmCache('mytestcharm')
