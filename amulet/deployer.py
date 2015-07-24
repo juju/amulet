@@ -135,6 +135,15 @@ class Deployment(object):
         if placement is not None:
             service['to'] = placement
 
+        if constraints is None and 'JUJU_TEST_CONSTRAINTS' in os.environ:
+            constraints = {}
+            for c in os.environ['JUJU_TEST_CONSTRAINTS'].split():
+                try:
+                    k, v = c.split('=')
+                    constraints[k] = v
+                except:
+                    raise ValueError('Invalid constraint set in JUJU_TEST_CONSTRAINTS: %s' % (c))
+
         if constraints is not None:
             if not isinstance(constraints, dict):
                 raise ValueError('Constraints must be specified as a dict')
