@@ -4,11 +4,9 @@ import json
 import logging
 import os
 import shlex
-import shutil
 import subprocess
 import yaml
 
-from time import time, sleep
 from path import path
 from path import tempdir
 
@@ -17,6 +15,7 @@ from .sentry import Talisman
 from .charm import CharmCache
 
 logger = logging.getLogger(__name__)
+
 
 def get_charm_name(dir_):
     """Given a directory, return the name of the charm in that dir.
@@ -71,7 +70,7 @@ class Deployment(object):
         schema = deploy_cfg.get(deployment_name, None) \
             or next(iter(deploy_cfg.values()))
         self.series = schema['series']
-        self.relations = schema['relations']
+        self.relations = schema.get('relations', [])
         for service, service_config in schema['services'].items():
             constraints = service_config.get('constraints')
             if constraints:
@@ -112,13 +111,13 @@ class Deployment(object):
 
         service = self.services[service_name] = {}
 
-        charm = self.charm_cache.fetch(service_name, charm,
-                                   branch=branch, series=self.series)
+        charm = self.charm_cache.fetch(
+            service_name, charm, branch=branch, series=self.series)
 
         if charm.subordinate:
             for rtype in ['provides', 'requires']:
                 try:
-                    rels = getattr(c, rtype)
+                    rels = getattr(charm, rtype)
                     for relation in rels:
                         rel = rels[relation]
                         if 'scope' in rel and rel['scope'] == 'container':
@@ -336,7 +335,8 @@ class Deployment(object):
         Returns the list of actions defined for the service.
         """
         if service not in self.services:
-            raise ValueError('Service needs to be added before listing actions.')
+            raise ValueError(
+                'Service needs to be added before listing actions.')
         raw = juju(['action', 'defined', service, '--format', 'json'])
         return json.loads(raw)
 
@@ -346,7 +346,9 @@ class Deployment(object):
         :param action: Action to run.
         :param action_args: Action parameters.
 
-        Runs specified action on specified unit and returns the uuid to fetch results by.
+        Runs specified action on specified unit and returns the uuid to fetch
+        results by.
+
         """
         if '/' not in unit:
             raise ValueError('%s is not a unit' % unit)
@@ -372,7 +374,7 @@ class Deployment(object):
             if 'results' in result:
                 return result['results']
         return {}
-        
+
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
