@@ -1,4 +1,3 @@
-
 import sys
 import yaml
 
@@ -73,7 +72,7 @@ def _get_gojuju_status(environment=None):
 
 # Move these to another module?
 def _get_pyjuju_status(environment=None):
-    cmd = ['status']
+    cmd = ['status', '--format', 'yaml']
     if environment:
         cmd.extend(['-e', environment])
 

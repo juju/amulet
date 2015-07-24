@@ -22,7 +22,8 @@ class WaiterTest(unittest.TestCase):
 
         status = waiter._get_pyjuju_status('dummy')
         self.assertEqual(yaml.safe_load(str(mstatus)), status)
-        mock_check_output.assert_called_with(['status', '-e', 'dummy'])
+        mock_check_output.assert_called_with(
+            ['status', '--format', 'yaml', '-e', 'dummy'])
 
     @patch('amulet.waiter.juju')
     def test_get_pyjuju_status_timeout(self, mj):
@@ -98,7 +99,6 @@ class WaiterTest(unittest.TestCase):
         mstatus.add('test-srv')
         mstatus.status['services']['test-sub'].pop('units', None)
         mstatus.status['services']['test-sub']['subordinate-to'] = 'test-srv'
-
 
         ms.return_value = yaml.safe_load(str(mstatus))
         output = {'test-srv': {'0': 'started'}}
