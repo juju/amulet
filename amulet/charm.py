@@ -8,7 +8,6 @@ import yaml
 
 from .helpers import reify
 from .helpers import run_bzr
-from .helpers import setup_bzr
 from charmworldlib.charm import Charm
 from path import path
 from path import tempdir
@@ -30,13 +29,15 @@ class CharmCache(dict):
             return LocalCharm(
                 os.path.join(
                     os.environ.get('JUJU_REPOSITORY', ''),
-                    charm_path[len('local:'):]))
+                    charm_path[len('local:'):]),
+                series
+            )
 
         if branch and branch.endswith('.git'):
             return GitCharm(branch, name=charm_path)
 
         if os.path.exists(os.path.expanduser(charm_path)):
-            return LocalCharm(charm_path)
+            return LocalCharm(charm_path, series)
 
         return Charm(with_series(charm_path, series))
 
@@ -63,49 +64,37 @@ def with_series(charm_path, series):
     return charm_path
 
 
-def is_branch(path, control_dirs=set(('.bzr', '.git'))):
-    """Test to see if this path is a supported bzr branch.
-
-    May be bzr or git.
-    """
-    for control_dir in control_dirs:
-        if os.path.exists(os.path.join(path, control_dir)):
-            return True
-    return False
-
-
 class LocalCharm(object):
-    def __init__(self, path):
+    def __init__(self, path, series):
         path = os.path.abspath(os.path.expanduser(path))
 
         if not os.path.exists(os.path.join(path, 'metadata.yaml')):
             raise Exception('Charm not found')
 
-        if not is_branch(path):
-            path = self._make_temp_copy(path)
+        if os.path.basename(os.path.dirname(path)) != series:
+            path = self._make_temp_copy(path, series)
 
-        self.url = None
+        self.url = path
         self.subordinate = False
         self.relations = {}
         self.provides = {}
         self.requires = {}
-        self.code_source = self.source = {'location': path}
+        self.code_source = self.source = None
         self._raw = self._load(os.path.join(path, 'metadata.yaml'))
         self._parse(self._raw)
 
-    def _make_temp_copy(self, path):
+    def _make_temp_copy(self, path, series):
         d = tempfile.mkdtemp(prefix='charm')
-        temp_charm_dir = os.path.join(d, os.path.basename(path))
-        atexit.register(shutil.rmtree, temp_charm_dir)
+        atexit.register(shutil.rmtree, d)
+
+        series_dir = os.path.join(d, series)
+        os.mkdir(series_dir)
+        temp_charm_dir = os.path.join(series_dir, os.path.basename(path))
 
         def ignore(src, names):
             return ['.git', '.bzr']
 
         shutil.copytree(path, temp_charm_dir, symlinks=True, ignore=ignore)
-        setup_bzr(temp_charm_dir)
-        run_bzr(["add", "."], temp_charm_dir)
-        run_bzr(["commit", "--unchanged", "-m", "Copied from {}".format(path)],
-                temp_charm_dir)
         return temp_charm_dir
 
     def _parse(self, metadata):
@@ -126,7 +115,7 @@ class LocalCharm(object):
         return yaml.dump(self._raw)
 
     def __repr__(self):
-        return '<LocalCharm %s>' % self.code_source['location']
+        return '<LocalCharm %s>' % self.url
 
 
 class VCSCharm(object):
