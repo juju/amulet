@@ -14,6 +14,7 @@ from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 from .charm import CharmCache
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -112,7 +113,7 @@ class Deployment(object):
         service = self.services[service_name] = {}
 
         charm = self.charm_cache.fetch(
-            service_name, charm, branch=branch, series=self.series)
+            service_name, charm, branch=branch, series=series or self.series)
 
         if charm.subordinate:
             for rtype in ['provides', 'requires']:
@@ -142,7 +143,9 @@ class Deployment(object):
                     k, v = c.split('=')
                     env_constraints[k] = v
                 except:
-                    raise ValueError('Invalid constraint in JUJU_TEST_CONSTRAINTS: %s' % (c))
+                    raise ValueError(
+                        'Invalid constraint in JUJU_TEST_CONSTRAINTS: '
+                        '%s' % (c))
             if constraints is not None:
                 env_constraints.update(constraints)
             constraints = env_constraints
@@ -405,11 +408,17 @@ class Deployment(object):
             schema_file = tmpdir / 'deployer-schema.json'
             schema_file.write_text(schema_json)
 
-            cmd = "{deployer} -W -L -c {schema} -e {env} -t {timeout} {env}"
-            cmd_args = dict(deployer=self.deployer.expanduser(),
-                            schema=schema_file,
-                            env=self.juju_env,
-                            timeout=str(timeout + 100))
+            cmd = "{deployer} -W {debug} -c {schema} -e {env} -t {timeout} {env}"
+            cmd_args = dict(
+                deployer=self.deployer.expanduser(),
+                debug=(
+                    '-d'
+                    if self.log.getEffectiveLevel() == logging.DEBUG
+                    else ''),
+                schema=schema_file,
+                env=self.juju_env,
+                timeout=str(timeout + 100),
+            )
             cmd = cmd.format(**cmd_args)
             self.log.debug(cmd)
 

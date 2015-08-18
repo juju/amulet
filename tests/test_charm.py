@@ -1,16 +1,13 @@
 import os
-import shutil
 import tempfile
 import unittest
 import yaml
 
-from mock import patch, call
+from mock import patch
 
 from amulet.charm import CharmCache
 from amulet.charm import LocalCharm
-from amulet.charm import is_branch
 from amulet.charm import run_bzr
-from amulet.charm import setup_bzr
 
 
 class RunBzrTest(unittest.TestCase):
@@ -38,33 +35,6 @@ class RunBzrTest(unittest.TestCase):
                                 env=env)
 
 
-class SetupBzrTest(unittest.TestCase):
-    @patch('amulet.helpers.run_bzr')
-    def test_setup_bzr(self, mp):
-        # Set one side_effect for each expected call to run_bzr.
-        mp.side_effect = [IOError("bzr command failed!"), None, None, None]
-        setup_bzr('/path')
-        self.assertEqual(
-            mp.call_args_list,
-            [call(['whoami'], '/path'),
-             call(['whoami', 'amulet@dummy-user.tld'], '/path'),
-             call(['init'], '/path'),
-             call(['config', 'add.maximum_file_size=0'], '/path'),
-             ])
-
-
-RAW_METADATA_YAML = '''
-name: charm-name
-description: Whatever man
-requires:
-  relation:
-    interface: iname
-provides:
-  plation:
-    interface: aniname
-'''
-
-
 class LocalCharmTest(unittest.TestCase):
     @patch('os.path.exists')
     @patch.object(LocalCharm, '_load')
@@ -73,9 +43,9 @@ class LocalCharmTest(unittest.TestCase):
         mlc_l.return_value = {'name': 'test',
                               'author': 'ohkay',
                               'provides': {'rel': {'interface': 'test'}}}
-        c = LocalCharm('/path/to/test')
+        c = LocalCharm('/path/to/precise/test', 'precise')
         self.assertEqual('test', c.name)
-        mlc_l.assert_called_with('/path/to/test/metadata.yaml')
+        mlc_l.assert_called_with('/path/to/precise/test/metadata.yaml')
 
     def test_make_temp(self):
         charm_dir = tempfile.mkdtemp()
@@ -83,11 +53,13 @@ class LocalCharmTest(unittest.TestCase):
         with open(os.path.join(charm_dir, 'metadata.yaml'), 'w') as f:
             f.write(yaml.dump(metadata))
 
-        c = LocalCharm(charm_dir)
-        code_source = c.code_source['location']
+        c = LocalCharm(charm_dir, 'trusty')
+        code_source = c.url
         self.assertTrue(code_source != charm_dir)
         self.assertTrue(code_source.startswith('/tmp/charm'))
-        self.assertTrue(os.path.exists(os.path.join(code_source, '.bzr')))
+        self.assertEqual(
+            os.path.basename(os.path.dirname(code_source)),
+            'trusty')
         self.assertTrue(os.path.exists(os.path.join(
             code_source, 'metadata.yaml')))
 
@@ -104,14 +76,16 @@ class GetCharmTest(unittest.TestCase):
             with patch.dict('amulet.charm.os.environ', {
                     'JUJU_REPOSITORY': ''}):
                 CharmCache.get_charm('local:precise/mycharm')
-                LocalCharm.assert_called_once_with('precise/mycharm')
+                LocalCharm.assert_called_once_with(
+                    'precise/mycharm', 'precise')
                 LocalCharm.reset_mock()
 
             # Patch w/JUJU_REPOSITORY
             with patch.dict('amulet.charm.os.environ', {
                     'JUJU_REPOSITORY': '~/charms'}):
                 CharmCache.get_charm('local:precise/mycharm')
-                LocalCharm.assert_called_once_with('~/charms/precise/mycharm')
+                LocalCharm.assert_called_once_with(
+                    '~/charms/precise/mycharm', 'precise')
 
 
 class CharmCacheTest(unittest.TestCase):
@@ -167,18 +141,3 @@ class CharmCacheTest(unittest.TestCase):
             self.assertEqual(charm, get_charm.return_value)
             get_charm.assert_called_once_with(os.getcwd(), branch=None,
                                               series='precise')
-
-
-class IsBranchTest(unittest.TestCase):
-    def setUp(self):
-        self.charm_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.charm_dir)
-
-    def test_bzr(self):
-        os.mkdir(os.path.join(self.charm_dir, '.bzr'))
-        self.assertTrue(is_branch(self.charm_dir))
-
-    def test_no_control_dir(self):
-        self.assertFalse(is_branch(self.charm_dir))
