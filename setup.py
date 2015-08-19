@@ -24,9 +24,4 @@ setup(
     author_email='marco@ceppi.net',
     url="https://launchpad.net/amulet",
     packages=['amulet'],
-    entry_points={
-        'console_scripts': [
-            'amulet=amulet.cli:main'
-        ]
-    }
 )
