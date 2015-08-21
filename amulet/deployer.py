@@ -14,7 +14,6 @@ from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 from .charm import CharmCache
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
