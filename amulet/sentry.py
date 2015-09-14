@@ -2,7 +2,6 @@ import glob
 import json
 import os
 import subprocess
-import time
 
 import pkg_resources
 
@@ -63,7 +62,7 @@ class UnitSentry(Sentry):
         source = pkg_resources.resource_filename(
             'amulet', os.path.join('unit-scripts', 'amulet'))
         dest = '/tmp/amulet'
-        self.run('mkdir -p -m a=rwx {}'.format(dest))
+        output, code = self.ssh('mkdir -p -m a=rwx {}'.format(dest), raise_on_failure=True)
         # copy one at a time b/c `juju scp -r` doesn't work (currently)
         for f in glob.glob(os.path.join(source, '*.py')):
             cmd = "juju scp {} {}:{}".format(
@@ -117,16 +116,37 @@ class UnitSentry(Sentry):
         output = stdout if p.returncode == 0 else stderr
         return output.decode('utf8'), p.returncode
 
-    def _run_unit_script(self, cmd, timeout=300):
+    def ssh(self, command, unit=None, raise_on_failure=False):
+        """
+        Run a command against an individual unit, using `juju ssh`.
+
+        Using `juju ssh` bypasses the Juju execution queue, so it will not
+        be blocked by running hooks.  Note, however, that the command is run
+        as the ubuntu user instead of root.
+        """
+        unit = unit or self.info['unit_name']
+        cmd = ['juju', 'ssh', unit, command]
+        p = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = p.communicate()
+        output = stdout if p.returncode == 0 else stderr
+        if raise_on_failure and p.returncode != 0:
+            raise subprocess.CalledProcessError(p.returncode, cmd, output)
+        return output.decode('utf8').strip(), p.returncode
+
+    def _run_unit_script(self, cmd):
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self._run(cmd, timeout=timeout)
+        output, return_code = self.ssh(cmd)
         if return_code == 0:
             return json.loads(output)
         else:
             raise IOError(output)
 
-    def juju_agent(self, timeout=300):
-        return self._run_unit_script("juju_agent.py", timeout)
+    def juju_agent(self):
+        return self._run_unit_script("juju_agent.py")
 
     def relation(self, from_rel, to_rel):
         this_unit = '{service}/{unit}'.format(**self.info)
@@ -285,7 +305,7 @@ class Talisman(object):
             with helpers.timeout(timeout):
                 while not ready:
                     for unit in self.unit.keys():
-                        status = self.unit[unit].juju_agent(timeout=timeout)
+                        status = self.unit[unit].juju_agent()
 
                         # Check if we have a hook key and it's not None
                         if status is None:
