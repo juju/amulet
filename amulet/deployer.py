@@ -67,8 +67,13 @@ class Deployment(object):
         return self.load(contents, deployment_name)
 
     def load(self, deploy_cfg, deployment_name=None):
-        schema = deploy_cfg.get(deployment_name, None) \
-            or next(iter(deploy_cfg.values()))
+        if deployment_name is None and 'series' in deploy_cfg:
+            # v4 format
+            schema = deploy_cfg
+        else:
+            # v3 format
+            schema = deploy_cfg.get(deployment_name, None) \
+                or next(iter(deploy_cfg.values()))
         self.series = schema['series']
         self.relations = schema.get('relations', [])
         for service, service_config in schema['services'].items():
