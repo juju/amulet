@@ -137,16 +137,18 @@ class UnitSentry(Sentry):
             raise subprocess.CalledProcessError(p.returncode, cmd, output)
         return output.decode('utf8').strip(), p.returncode
 
-    def _run_unit_script(self, cmd):
+    def _run_unit_script(self, cmd, working_dir=None):
+        if working_dir is None:
+            working_dir = '/var/lib/juju/agents/unit-{service}-{unit}/charm'.format(**self.info)
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self.ssh(cmd)
+        output, return_code = self.ssh('cd {} ; {}'.format(working_dir, cmd))
         if return_code == 0:
             return json.loads(output)
         else:
             raise IOError(output)
 
     def juju_agent(self):
-        return self._run_unit_script("juju_agent.py")
+        return self._run_unit_script("juju_agent.py", working_dir=".")
 
     def relation(self, from_rel, to_rel):
         this_unit = '{service}/{unit}'.format(**self.info)
