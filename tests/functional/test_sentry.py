@@ -61,6 +61,8 @@ class TestDeployment(unittest.TestCase):
                 'mode': '0100644',
             },
         )
+        stat = self.nagios.file_stat('metadata.yaml')
+        self.assertTrue(stat.pop('mtime'))
 
     def test_file_contents(self):
         path = '/tmp/amulet-test/test-file'
@@ -68,6 +70,7 @@ class TestDeployment(unittest.TestCase):
             self.nagios.file_contents(path),
             'contents\n',
         )
+        self.assertIn('nagios', self.nagios.file_contents('metadata.yaml'))
 
     def test_subordinate_file_contents(self):
         path = '/tmp/amulet-sub-test'
@@ -75,6 +78,7 @@ class TestDeployment(unittest.TestCase):
             self.rsyslogfwd.file_contents(path),
             'more-contents\n',
         )
+        self.assertIn('rsyslog', self.rsyslogfwd.file_contents('metadata.yaml'))
 
     def test_directory_stat(self):
         path = '/tmp/amulet-test'
@@ -94,6 +98,8 @@ class TestDeployment(unittest.TestCase):
                 'mode': '040755',
             },
         )
+        stat = self.nagios.directory_stat('hooks')
+        self.assertTrue(stat.pop('mtime'))
 
     def test_directory_listing(self):
         path = '/tmp/amulet-test'
@@ -103,6 +109,7 @@ class TestDeployment(unittest.TestCase):
                 'directories': ['test-dir'],
             },
         )
+        self.assertIn('install', self.nagios.directory_listing('hooks')['files'])
 
     def test_relation(self):
         nagios_info = self.nagios.relation(
