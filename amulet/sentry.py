@@ -141,7 +141,7 @@ class UnitSentry(Sentry):
         if working_dir is None:
             working_dir = '/var/lib/juju/agents/unit-{service}-{unit}/charm'.format(**self.info)
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self.ssh('cd {} ; {}'.format(working_dir, cmd))
+        output, return_code = self.ssh('cd {} ; sudo {}'.format(working_dir, cmd))
         if return_code == 0:
             return json.loads(output)
         else:
