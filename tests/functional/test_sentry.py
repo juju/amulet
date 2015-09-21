@@ -28,7 +28,8 @@ class TestDeployment(unittest.TestCase):
         cls.haproxy = cls.deployment.sentry['haproxy/0']
         cls.rsyslogfwd = cls.deployment.sentry['rsyslog-forwarder/0']
         cls.nagios.run(
-            'mkdir -p /tmp/amulet-test/test-dir;'
+            'sudo mkdir -p /tmp/amulet-test/test-dir;'
+            'sudo chmod go-rx /tmp/amulet-test;'
             'echo contents > /tmp/amulet-test/test-file;'
         )
         cls.rsyslogfwd.run(
@@ -95,7 +96,7 @@ class TestDeployment(unittest.TestCase):
                 'size': stat['size'],
                 'uid': 0,
                 'gid': 0,
-                'mode': '040755',
+                'mode': '040700',
             },
         )
         stat = self.nagios.directory_stat('hooks')
