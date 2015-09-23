@@ -141,7 +141,12 @@ class UnitSentry(Sentry):
         if working_dir is None:
             working_dir = '/var/lib/juju/agents/unit-{service}-{unit}/charm'.format(**self.info)
         cmd = "/tmp/amulet/{}".format(cmd)
-        output, return_code = self.ssh('cd {} ; sudo {}'.format(working_dir, cmd))
+        # XXX: Yes, we are throwing away stderr. Why? Because sudo can write
+        # to stderr even when the cmd succeeds. Then, `juju ssh` combines
+        # stdout and stderr before handing us the output, so we can't
+        # distinguish the two. If we have stderr output mixed in with the
+        # stdout of a successful cmd, json parsing will fail.
+        output, return_code = self.ssh('cd {} ; sudo {} 2>/dev/null'.format(working_dir, cmd))
         if return_code == 0:
             return json.loads(output)
         else:
