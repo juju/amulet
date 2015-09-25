@@ -8,7 +8,6 @@ import tempfile
 import yaml
 
 from amulet import Deployment
-from amulet.deployer import CharmCache
 from amulet.deployer import get_charm_name
 from amulet.sentry import UnitSentry
 from mock import patch, MagicMock, call
@@ -489,9 +488,9 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.juju')
     def test_action_fetch(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
-                          '{"results":{"key":"value"},"status":"completed",'\
-                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'\
-                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'\
+                          '{"results":{"key":"value"},"status":"completed",'
+                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'
+                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'
                           '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
         d = Deployment(juju_env='gojuju')
         d.add('mysql')
@@ -500,13 +499,13 @@ class DeployerTests(unittest.TestCase):
         results = d.action_fetch(uuid)
         self.assertEquals(results, {'key': 'value'})
         mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
-                         call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+                            call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
     @patch('amulet.deployer.juju')
     def test_action_fetch_nowait_fail(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
-                          '{"status":"running",'\
-                          '"timing":{"enqueued":"2015-07-21 09:50:59 +0300 EEST",'\
+                          '{"status":"running",'
+                          '"timing":{"enqueued":"2015-07-21 09:50:59 +0300 EEST",'
                           '"started":"2015-07-21 09:51:04 +0300 EEST"}}']
         d = Deployment(juju_env='gojuju')
         d.add('mysql')
@@ -520,9 +519,9 @@ class DeployerTests(unittest.TestCase):
     @patch('amulet.deployer.juju')
     def test_action_fetch_wait(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
-                          '{"results":{"key":"value"},"status":"completed",'\
-                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'\
-                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'\
+                          '{"results":{"key":"value"},"status":"completed",'
+                          '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'
+                          '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'
                           '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
         d = Deployment(juju_env='gojuju')
         d.add('mysql')
@@ -532,7 +531,7 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(results, {'key': 'value'})
         mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
                              call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
-        
+
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):
         d = Deployment(juju_env='gogo')
@@ -551,7 +550,7 @@ class DeployerTests(unittest.TestCase):
             self.assertEqual('Relation does not exist', str(e))
 
     @patch('amulet.deployer.juju')
-    def test_remove_unit(self, mj):
+    def test_remove_unit_m(self, mj):
         d = Deployment(juju_env='gogo')
         d.add('mysql', units=2)
         d.deployed = True
@@ -580,10 +579,6 @@ class DeployerTests(unittest.TestCase):
         d.add('mysql', units=2)
         d.deployed = True
         self.assertRaises(ValueError, d.remove_unit, 'wordpress/1')
-
-
-
-
 
 
 class GetCharmNameTest(unittest.TestCase):
