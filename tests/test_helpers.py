@@ -3,6 +3,7 @@
 import unittest
 import sys
 import yaml
+import time
 
 from amulet.helpers import (
     JujuVersion,
@@ -10,6 +11,8 @@ from amulet.helpers import (
     default_environment,
     juju,
     raise_status,
+    timeout,
+    TimeoutError,
 )
 
 from mock import patch, Mock
@@ -116,6 +119,17 @@ class HelpersTest(unittest.TestCase):
         menvironments.return_value = envs
 
         self.assertRaises(ValueError, default_environment)
+
+    @patch('amulet.helpers.juju', Mock())
+    def test_timeout(self):
+        def case(t):
+            for i in timeout(t):
+                time.sleep(0.2)
+                if i == 1:
+                    return
+        with patch('sys.stderr.write', Mock()):
+            self.assertRaises(TimeoutError, case, 0.1)
+        case(0.5)
 
 
 class JujuTest(unittest.TestCase):

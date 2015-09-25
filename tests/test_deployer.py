@@ -141,7 +141,7 @@ class DeployerTests(unittest.TestCase):
 
     def _make_mock_status(self, d):
         def _mock_status(juju_env):
-            status = dict(services={})
+            status = dict(services={}, machines={})
             total_units = 1
             for service in d.services:
                 status['services'][service] = dict(units={})
@@ -150,12 +150,20 @@ class DeployerTests(unittest.TestCase):
                     status['services'][service]['units'][
                         '{}/{}'.format(service, unit)] = {
                         'agent-state': 'started',
-                        'public-address': '10.0.3.{}'.format(total_units)}
+                        'public-address': '10.0.3.{}'.format(total_units),
+                        'machine': str(total_units)}
+                    status['machines'][str(total_units)] = {
+                        'agent-state': 'started',
+                    }
             status['services']['relation-sentry'] = {
                 'units': {
                     'relation-sentry/0': {
                         'agent-state': 'started',
-                        'public-address': '10.0.3.1'}}}
+                        'public-address': '10.0.3.1',
+                        'machine': str(total_units+1)}}}
+            status['machines'][str(total_units+1)] = {
+                'agent-state': 'started',
+            }
             return status
         return _mock_status
 
