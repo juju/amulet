@@ -120,15 +120,14 @@ class HelpersTest(unittest.TestCase):
 
         self.assertRaises(ValueError, default_environment)
 
-    @patch('amulet.helpers.juju', Mock())
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     def test_timeout(self):
         def case(t):
             for i in timeout(t):
                 time.sleep(0.2)
                 if i == 1:
                     return
-        with patch('sys.stderr.write', Mock()):
-            self.assertRaises(TimeoutError, case, 0.1)
+        self.assertRaises(TimeoutError, case, 0.1)
         case(0.5)
 
 

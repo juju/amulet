@@ -166,25 +166,23 @@ class TalismanTest(unittest.TestCase):
         self.assertTrue('rsyslog-forwarder/0' in sentry.unit)
 
     @patch.object(Talisman, '__init__', Mock(return_value=None))
-    @patch('amulet.helpers.juju', Mock())
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.waiter.status')
     def test_wait_for_status(self, status):
         status.return_value = mock_status
         talisman = Talisman([], timeout=self.timeout)
 
-        with patch('sys.stderr.write', Mock()):
-            talisman.wait_for_status('env', ['meteor'], self.timeout)
-            talisman.wait_for_status('env', ['old'], self.timeout)
+        talisman.wait_for_status('env', ['meteor'], self.timeout)
+        talisman.wait_for_status('env', ['old'], self.timeout)
 
-            self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['pending'], self.timeout)
-            self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['nopublic'], self.timeout)
-            self.assertRaisesRegexp(Exception, r'Error on unit.*hook failed',
-                                    talisman.wait_for_status, 'env', ['errord'], self.timeout)
-            self.assertRaisesRegexp(Exception, r'Error on unit.*hook failed',
-                                    talisman.wait_for_status, 'env', ['olderrord'], self.timeout)
+        self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['pending'], self.timeout)
+        self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['nopublic'], self.timeout)
+        self.assertRaisesRegexp(Exception, r'Error on unit.*hook failed',
+                                talisman.wait_for_status, 'env', ['errord'], self.timeout)
+        self.assertRaisesRegexp(Exception, r'Error on unit.*hook failed',
+                                talisman.wait_for_status, 'env', ['olderrord'], self.timeout)
 
-    @patch('sys.stderr.write', Mock())
-    @patch('amulet.helpers.juju', Mock())
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.helpers.default_environment', Mock())
     @patch.object(UnitSentry, 'upload_scripts', Mock())
     @patch.object(UnitSentry, 'juju_agent')
@@ -222,8 +220,7 @@ class TalismanTest(unittest.TestCase):
         juju_agent.return_value = {}
         t.wait(self.timeout)
 
-    @patch('sys.stderr.write', Mock())
-    @patch('amulet.helpers.juju', Mock(side_effect=lambda c: ' '.join(c)))
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.helpers.default_environment', Mock())
     @patch('amulet.waiter.status')
     def test_wait_for_messages(self, _status):

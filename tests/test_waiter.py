@@ -187,8 +187,7 @@ class WaitTest(unittest.TestCase):
 
         self.assertTrue(wait(juju_env='dummy', timeout=1))
 
-    @patch('sys.stderr.write', Mock())
-    @patch('amulet.helpers.juju', Mock())
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.waiter.state')
     def test_wait_exception(self, waiter_status):
         waiter_status.side_effect = waiter.StateError
