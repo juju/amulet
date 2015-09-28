@@ -200,7 +200,7 @@ class TalismanTest(unittest.TestCase):
         t.wait(self.timeout)
 
         set_state('workload-status', 'current', 'blocked')
-        self.assertRaises(TimeoutError, t.wait, self.timeout)
+        t.wait(self.timeout)
 
         set_state('workload-status', 'current', 'active')
         set_state('agent-status', 'current', 'executing')

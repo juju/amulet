@@ -10,7 +10,7 @@ import yaml
 from path import path
 from path import tempdir
 
-from .helpers import default_environment, juju, timeout_alarm as unit_timesout
+from .helpers import default_environment, juju, timeout as unit_timesout
 from .sentry import Talisman
 from .charm import CharmCache
 

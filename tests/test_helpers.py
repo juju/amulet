@@ -11,7 +11,7 @@ from amulet.helpers import (
     default_environment,
     juju,
     raise_status,
-    timeout,
+    timeout_gen,
     TimeoutError,
 )
 
@@ -121,9 +121,9 @@ class HelpersTest(unittest.TestCase):
         self.assertRaises(ValueError, default_environment)
 
     @patch('amulet.helpers.juju', Mock(return_value='status'))
-    def test_timeout(self):
+    def test_timeout_gen(self):
         def case(t):
-            for i in timeout(t):
+            for i in timeout_gen(t):
                 time.sleep(0.2)
                 if i == 1:
                     return

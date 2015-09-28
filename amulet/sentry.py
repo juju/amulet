@@ -331,7 +331,7 @@ class Talisman(object):
                         return False
             return True
 
-        for i in helpers.timeout(timeout):
+        for i in helpers.timeout_gen(timeout):
             if check_status(juju_env, services):
                 return waiter.status(juju_env)
 
@@ -349,9 +349,6 @@ class Talisman(object):
             for service_name in self.service_names:
                 service = status.get(service_name, {})
                 for unit_name, unit in service.items():
-                    if unit['workload-status']:
-                        if unit['workload-status']['current'] not in ('active', 'unknown'):
-                            return False
                     if unit['agent-status']:
                         if unit['agent-status']['current'] != 'idle':
                             return False
@@ -364,7 +361,7 @@ class Talisman(object):
                             return False
             return True
 
-        for i in helpers.timeout(timeout):
+        for i in helpers.timeout_gen(timeout):
             if check_status():
                 return
 
@@ -416,7 +413,7 @@ class Talisman(object):
             return messages
 
         matcher = StatusMessageMatcher()
-        for i in helpers.timeout(timeout):
+        for i in helpers.timeout_gen(timeout):
             status = self.get_status()
             for service, expected in messages.items():
                 actual = get_messages(service, status)

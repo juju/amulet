@@ -72,14 +72,18 @@ def juju(args, env=None):
     return _as_text(out) if out else None
 
 
-def timeout(seconds):
+def timeout_gen(seconds):
     """
     Return a counting generator that raises a :class:`TimeoutError` after
     a number of seconds.
 
-    Note, this is non-preemptive.  That is, it will only check for timeout
-    between iterations.  If you need a preemptive timeout, see
-    :func:`timeout_alarm`.
+    Note, this is non-preemptive; that is, it will only check for timeout
+    between iterations.  This means that it is guaranteed to not timeout
+    in the middle of doing its work / checking, which makes it more
+    deterministic and easier to debug, but also means that you must ensure
+    that the block does not contain an infinite loop or blocking system
+    call that needs to be preempted.  If you need a preemptive timeout, see
+    :func:`timeout`.
 
     :param float seconds: Number of seconds after which to timeout.
 
@@ -106,7 +110,7 @@ def timeout(seconds):
 
 
 @contextmanager
-def timeout_alarm(seconds):
+def timeout(seconds):
     def signal_handler(signum, frame):
         sys.stderr.write('Timeout occurred, printing juju status...')
         sys.stderr.write(juju(['status']))
