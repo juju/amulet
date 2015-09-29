@@ -314,6 +314,8 @@ class Talisman(object):
         def check_status(juju_env, services):
             status = self.get_status(juju_env)
             for service_name in services:
+                if service_name not in status:
+                    return False
                 for unit_name, unit in status[service_name].items():
                     state = unit['workload-status'].get('current') or unit['agent-state']
                     message = unit['workload-status'].get('message') or unit['agent-state-info']
@@ -324,10 +326,7 @@ class Talisman(object):
                         return False
                     if not unit['public-address']:
                         return False
-                    if unit['agent-status']:
-                        if unit['agent-status']['current'] != 'idle':
-                            return False
-                    elif unit['agent-state'] != 'started':
+                    if 'agent-state' in unit and unit['agent-state'] != 'started':
                         return False
             return True
 
@@ -438,7 +437,7 @@ class StatusMessageMatcher(object):
     def check_messages(self, expected, actual):
         """
         Check a single string or regexp against a list of messages.
-        
+
         All messages must match the string or regexp.
         """
         if not actual:
@@ -451,7 +450,7 @@ class StatusMessageMatcher(object):
     def check_set(self, expected, actual):
         """
         Check a set of strings or regexps against a list of messages.
-        
+
         Each expected string or regexp must match at least once.
         """
         if not actual:
@@ -491,7 +490,7 @@ class StatusMessageMatcher(object):
     def check_message(self, expected, actual):
         """
         Check a single string or regexp against a single message.
-        
+
         Returns the length of the match (0 for no match), to allow for preferring longer matches.
         """
         if hasattr(expected, 'search'):
