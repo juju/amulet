@@ -373,7 +373,7 @@ class Talisman(object):
         extended status (pre Juju 1.24), it will raise a
         :class:`~amulet.helpers.UnsupportedError` exception.
 
-        :param dict statuses: A mapping of services to an exact message,
+        :param dict messages: A mapping of services to an exact message,
             a regular expression, a set of messages or regular expressions,
             or a list of messages or regular expressions.  If a single message
             is given, all units of the service must match.  If a set is given,
@@ -391,7 +391,7 @@ class Talisman(object):
             t.wait_for_messages({'ubuntu': re.compile('r..dy')})
 
             # wait for at least one unit to report "ready"
-            t.wait_for_messages({'ubuntu': {'ready'})
+            t.wait_for_messages({'ubuntu': {'ready'}})
 
             # wait for all units to report either "ready" or "ok"
             t.wait_for_messages({'ubuntu': re.compile('ready|ok')})
@@ -436,6 +436,11 @@ class StatusMessageMatcher(object):
             return self.check_messages(expected, actual)
 
     def check_messages(self, expected, actual):
+        """
+        Check a single string or regexp against a list of messages.
+        
+        All messages must match the string or regexp.
+        """
         if not actual:
             return False
         for a in actual:
@@ -444,6 +449,11 @@ class StatusMessageMatcher(object):
         return True
 
     def check_set(self, expected, actual):
+        """
+        Check a set of strings or regexps against a list of messages.
+        
+        Each expected string or regexp must match at least once.
+        """
         if not actual:
             return False
         for e in expected:
@@ -456,10 +466,11 @@ class StatusMessageMatcher(object):
 
     def check_list(self, expected, actual):
         """
-        Lists must match one-to-one.
+        Check a list of strings or regexps against a list of messages.
 
-        pathlogocial: ['ready', 'ready', 'ok'] vs ['ready', 'ok', 'ok']
-        pathlogocial: [r'ready( \(limited\))?', 'ready'] vs ['ready', 'ready (limited)']
+        Each expected string or regexp must match once, and all messages must be matched.
+        If an expected string or regexp matches multiple messages, longer matches are
+        preferred, to resolve the ambiguity.
         """
         if len(actual) != len(expected):
             return False
@@ -478,7 +489,11 @@ class StatusMessageMatcher(object):
         return True
 
     def check_message(self, expected, actual):
-        # returns length for longest-match check; 0 -> no match
+        """
+        Check a single string or regexp against a single message.
+        
+        Returns the length of the match (0 for no match), to allow for preferring longer matches.
+        """
         if hasattr(expected, 'search'):
             m = expected.search(actual)
             return len(m.group()) if m else 0
