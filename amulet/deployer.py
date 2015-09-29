@@ -429,7 +429,7 @@ class Deployment(object):
             with self.deploy_w_timeout_and_dir(timeout, self.deployer_dir):
                 subprocess.check_call(shlex.split(cmd))
 
-        self.sentry = Talisman(self.services)
+        self.sentry = Talisman(self.services, timeout=timeout)
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)
