@@ -326,7 +326,7 @@ class Talisman(object):
                         return False
                     if not unit['public-address']:
                         return False
-                    if 'agent-state' in unit and unit['agent-state'] != 'started':
+                    if unit['agent-state'] not in (None, 'started'):
                         return False
             return True
 
