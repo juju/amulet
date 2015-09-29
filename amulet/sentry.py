@@ -1,5 +1,6 @@
 import glob
 import json
+import logging
 import os
 import subprocess
 from datetime import datetime
@@ -12,6 +13,8 @@ from . import helpers
 
 # number of seconds an agent must be idle to be considered quiescent
 IDLE_THRESHOLD = 30
+
+log = logging.getLogger(__name__)
 
 
 class SentryError(Exception):
@@ -360,8 +363,13 @@ class Talisman(object):
                             return False
             return True
 
+        log.info('Waiting up to %s seconds for deployment to settle...',
+                 timeout)
+        start = datetime.now()
         for i in helpers.timeout_gen(timeout):
             if check_status():
+                log.info('Deployment settled in %s seconds.',
+                         (datetime.now() - start).total_seconds())
                 return
 
     def wait_for_messages(self, messages, timeout=300):
