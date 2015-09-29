@@ -4,7 +4,7 @@ import yaml
 from .helpers import (
     TimeoutError,
     default_environment,
-    timeout,
+    timeout_gen,
     juju,
     JujuVersion,
 )
@@ -36,19 +36,12 @@ def wait(*args, **kwargs):
     if not 'timeout' in kwargs:
         kwargs['timeout'] = 300
 
-    ready = False
-    with timeout(kwargs['timeout']):
-        while not ready:
-            try:
-                raise_for_state(*args, juju_env=kwargs['juju_env'])
-            except TimeoutError:
-                raise
-            except:
-                ready = False
-            else:
-                ready = True
-
-    return True
+    for i in timeout_gen(kwargs['timeout']):
+        try:
+            raise_for_state(*args, juju_env=kwargs['juju_env'])
+            return True
+        except StateError:
+            pass
 
 
 def raise_for_state(*args, **kwargs):

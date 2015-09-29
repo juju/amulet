@@ -158,7 +158,7 @@ class Deployment(object):
             if not isinstance(constraints, dict):
                 raise ValueError('Constraints must be specified as a dict')
 
-            r = ["%s=%s" % (k, v) for k, v in constraints.items()]
+            r = ['%s=%s' % (K, V) for K, V in constraints.items()]
             service['constraints'] = " ".join(r)
 
         return service

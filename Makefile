@@ -81,7 +81,7 @@ coverage: $(NOSE)
 
 .PHONY: lint
 lint:
-	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' ! -iwholename '*venv/*' \) -print0 | xargs -r0 flake8
+	@find $(sources) -type f \( -iname '*.py' ! -iname '__init__.py' ! -iwholename '*venv/*' \) -print0 | xargs -r0 flake8 --max-line-length=120
 
 .PHONY: check
 check: test lint

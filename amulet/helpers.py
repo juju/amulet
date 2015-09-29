@@ -6,6 +6,7 @@ import yaml
 import signal
 import subprocess
 import errno
+from datetime import datetime
 
 from contextlib import contextmanager
 
@@ -17,6 +18,10 @@ FAIL = 1
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
         self.value = value
+
+
+class UnsupportedError(Exception):
+    pass
 
 
 def _as_text(bytestring):
@@ -65,6 +70,43 @@ def juju(args, env=None):
         raise IOError("juju command failed {!r}:\n"
                       "{}".format(args, _as_text(err)))
     return _as_text(out) if out else None
+
+
+def timeout_gen(seconds):
+    """
+    Return a counting generator that raises a :class:`TimeoutError` after
+    a number of seconds.
+
+    Note, this is non-preemptive; that is, it will only check for timeout
+    between iterations.  This means that it is guaranteed to not timeout
+    in the middle of doing its work / checking, which makes it more
+    deterministic and easier to debug, but also means that you must ensure
+    that the block does not contain an infinite loop or blocking system
+    call that needs to be preempted.  If you need a preemptive timeout, see
+    :func:`timeout`.
+
+    :param float seconds: Number of seconds after which to timeout.
+
+    Examples::
+
+        for i in timeout(30):
+            if i >= 40:
+                break  # will timeout first
+            sleep(10)
+
+        # wrong!
+        for i in timeout(30):
+            sleep(60)  # will not preempt! this will take 60s
+    """
+    start = datetime.now()
+    i = 0
+    while True:
+        yield i
+        if (datetime.now() - start).total_seconds() > seconds:
+            sys.stderr.write('Timeout occurred, printing juju status...')
+            sys.stderr.write(juju(['status']))
+            raise TimeoutError()
+        i += 1
 
 
 @contextmanager

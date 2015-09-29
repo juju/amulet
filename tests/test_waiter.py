@@ -9,7 +9,7 @@ from amulet import waiter
 from amulet.helpers import TimeoutError, JujuVersion
 from .helper import JujuStatus
 
-from mock import patch
+from mock import patch, Mock
 
 
 class WaiterTest(unittest.TestCase):
@@ -187,12 +187,12 @@ class WaitTest(unittest.TestCase):
 
         self.assertTrue(wait(juju_env='dummy', timeout=1))
 
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.waiter.state')
     def test_wait_exception(self, waiter_status):
-        waiter_status.side_effect = [Exception,
-                                     TimeoutError]
+        waiter_status.side_effect = waiter.StateError
 
-        self.assertRaises(TimeoutError, wait, juju_env='dummy')
+        self.assertRaises(TimeoutError, wait, juju_env='dummy', timeout=0.01)
 
 
 class StatusTest(unittest.TestCase):
