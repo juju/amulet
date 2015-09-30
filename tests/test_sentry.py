@@ -77,6 +77,11 @@ services:
     charm: cs:trusty/rsyslog-forwarder
     subordinate-to:
     - meteor
+    - ubuntu
+    relations:
+      juju-info:
+      - meteor
+      - ubuntu
   pending:
     units:
       pending/0:
@@ -124,6 +129,27 @@ services:
         agent-state: error
         agent-state-info: 'hook failed: "install"'
         machine: "2"
+  ubuntu:
+    charm: cs:trusty/ubuntu-4
+    exposed: false
+    service-status:
+      current: unknown
+      message: Waiting for agent initialization to finish
+      since: 30 Sep 2015 16:44:09-04:00
+    relations:
+      juju-info:
+      - rsyslog-forwarder
+    units:
+      ubuntu/0:
+        workload-status:
+          current: unknown
+          message: Waiting for agent initialization to finish
+          since: 30 Sep 2015 16:44:09-04:00
+        agent-status:
+          current: allocating
+          since: 30 Sep 2015 16:44:09-04:00
+        agent-state: pending
+        machine: "46"
 """)
 
 

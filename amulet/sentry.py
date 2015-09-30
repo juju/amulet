@@ -276,10 +276,11 @@ class Talisman(object):
         status = waiter.status(juju_env or self.juju_env)
         normalized = {}
         for service_name, service in status['services'].items():
-            if 'units' not in service:
+            if 'units' not in service and 'relations' not in service:
+                # ignore unrelated subordinates; they will never become ready
                 continue
             normalized.setdefault(service_name, {})
-            for unit_name, unit in service['units'].items():
+            for unit_name, unit in service.get('units', {}).items():
                 machine = status['machines'].get(unit.get('machine'), {})
                 normalized[service_name][unit_name] = {
                     'machine-state': machine.get('agent-state'),
@@ -318,7 +319,10 @@ class Talisman(object):
             status = self.get_status(juju_env)
             for service_name in services:
                 if service_name not in status:
-                    return False
+                    # ignore unrelated subordinates; they will never become ready
+                    continue
+                if not status[service_name]:
+                    return False  # expected subordinate
                 for unit_name, unit in status[service_name].items():
                     state = unit['workload-status'].get('current') or unit['agent-state']
                     message = unit['workload-status'].get('message') or unit['agent-state-info']
@@ -413,7 +417,7 @@ class Talisman(object):
         """
         def get_messages(service, status):
             messages = []
-            for unit in status[service].values():
+            for unit in status.get(service, {}).values():
                 if not unit['workload-status']:
                     raise helpers.UnsupportedError()
                 messages.append(unit['workload-status'].get('message', ''))
