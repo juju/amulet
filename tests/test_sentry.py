@@ -77,6 +77,9 @@ services:
     charm: cs:trusty/rsyslog-forwarder
     subordinate-to:
     - meteor
+    relations:
+      juju-info:
+      - meteor
   pending:
     units:
       pending/0:
@@ -124,6 +127,49 @@ services:
         agent-state: error
         agent-state-info: 'hook failed: "install"'
         machine: "2"
+  ubuntu:
+    charm: cs:trusty/ubuntu-4
+    exposed: false
+    service-status:
+      current: unknown
+      message: Waiting for agent initialization to finish
+      since: 30 Sep 2015 16:44:09-04:00
+    relations:
+      juju-info:
+      - sub
+      - subpend
+    units:
+      ubuntu/0:
+        workload-status:
+          current: unknown
+          since: 24 Sep 2015 16:44:44-04:00
+        agent-status:
+          current: started
+          since: 24 Sep 2015 16:44:44-04:00
+        agent-state: pending
+        machine: "2"
+        subordinates:
+          sub/0:
+            public-address: 10.0.3.115
+            agent-status:
+              current: started
+              since: 24 Sep 2015 16:44:44-04:00
+  sub:
+    charm: cs:trusty/sub-1
+    subordinate-to:
+    - ubuntu
+    relations:
+      juju-info:
+      - ubuntu
+  subpend:
+    charm: cs:trusty/subpend-1
+    subordinate-to:
+    - ubuntu
+    relations:
+      juju-info:
+      - ubuntu
+  unsub:
+    charm: cs:trusty/unsub-1
 """)
 
 
@@ -174,6 +220,8 @@ class TalismanTest(unittest.TestCase):
 
         talisman.wait_for_status('env', ['meteor'], self.timeout)
         talisman.wait_for_status('env', ['old'], self.timeout)
+        talisman.wait_for_status('env', ['sub'], self.timeout)
+        talisman.wait_for_status('env', ['unsub'], self.timeout)
 
         self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['pending'], self.timeout)
         self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['nopublic'], self.timeout)
@@ -181,6 +229,7 @@ class TalismanTest(unittest.TestCase):
                                 talisman.wait_for_status, 'env', ['errord'], self.timeout)
         self.assertRaisesRegexp(Exception, r'Error on unit.*hook failed',
                                 talisman.wait_for_status, 'env', ['olderrord'], self.timeout)
+        self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['subpend'], self.timeout)
 
     @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.helpers.default_environment', Mock())
