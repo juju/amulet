@@ -47,7 +47,6 @@ class Deployment(object):
 
         self.sentry = None
         self.deployer = path(juju_deployer)
-        self.deployer_dir = tempdir(prefix='amulet_deployment_')
 
         if 'JUJU_TEST_CHARM' in os.environ:
             self.charm_name = os.environ['JUJU_TEST_CHARM']
@@ -335,15 +334,16 @@ class Deployment(object):
         self.services[service]['expose'] = True
 
     @contextlib.contextmanager
-    def deploy_w_timeout_and_dir(self, timeout, deploy_dir):
+    def deploy_w_timeout(self, timeout):
         """
         :param timeout: Amount of time to wait for deployment to complete.
-        :param deploy_dir: working directory for deployment command to run
 
-        Sets timeout and working directory for wrapped block. If successful,
-        sets instance.deployed.
+        Sets timeout and tmp working directory for wrapped block. If
+        successful, sets instance.deployed.
+
         """
-        with self.deployer_dir, unit_timesout(timeout):
+        deploy_dir = tempdir(prefix='amulet_deployment_')
+        with deploy_dir, unit_timesout(timeout):
             yield
         self.deployed = True
 
@@ -426,7 +426,7 @@ class Deployment(object):
             cmd = cmd.format(**cmd_args)
             self.log.debug(cmd)
 
-            with self.deploy_w_timeout_and_dir(timeout, self.deployer_dir):
+            with self.deploy_w_timeout(timeout):
                 subprocess.check_call(shlex.split(cmd))
 
         self.sentry = Talisman(self.services, timeout=timeout)
