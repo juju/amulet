@@ -274,7 +274,12 @@ class Talisman(object):
         to make it a bit easier to work with.
         """
         status = waiter.status(juju_env or self.juju_env)
+        machine_states = {}
         normalized = {}
+        for number, machine in status['machines'].items():
+            machine_states[number] = machine.get('agent-state')
+            for container_name, container in machine.get('containers', {}):
+                machine_states[container_name] = container.get('agent-state')
         for service_name, service in status['services'].items():
             if 'units' not in service and 'relations' not in service:
                 # ignore unrelated subordinates; they will never become ready
@@ -283,7 +288,7 @@ class Talisman(object):
             for unit_name, unit in service.get('units', {}).items():
                 machine = status['machines'].get(unit.get('machine'), {})
                 normalized[service_name][unit_name] = {
-                    'machine-state': machine.get('agent-state'),
+                    'machine-state': machine_states['agent-state'],
                     'public-address': unit.get('public-address'),
                     'workload-status': unit.get('workload-status', {}),
                     'agent-status': unit.get('agent-status', {}),
