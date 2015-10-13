@@ -231,6 +231,42 @@ class TalismanTest(unittest.TestCase):
                                 talisman.wait_for_status, 'env', ['olderrord'], self.timeout)
         self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['subpend'], self.timeout)
 
+    @patch.object(Talisman, '__init__', Mock(return_value=None))
+    @patch('amulet.helpers.juju', Mock(return_value='status'))
+    @patch('amulet.waiter.status')
+    def test_wait_for_status_containers(self, status):
+        status.return_value = {
+            'machines': {
+                '0': {
+                    'containers': {
+                        '0/lxc/1': {'agent-state': 'started'},
+                        '0/lxc/2': {'agent-state': 'pending'},
+                    },
+                },
+            },
+            'services': {
+                'foo': {
+                    'units': {
+                        'foo/0': {
+                            'machine': '0/lxc/1',
+                            'public-address': 'something',
+                        },
+                    },
+                },
+                'bar': {
+                    'units': {
+                        'bar/0': {
+                            'machine': '0/lxc/2',
+                            'public-address': 'something',
+                        },
+                    },
+                },
+            },
+        }
+        talisman = Talisman([], timeout=self.timeout)
+        talisman.wait_for_status('env', ['foo'], self.timeout)
+        self.assertRaises(TimeoutError, talisman.wait_for_status, 'env', ['bar'], self.timeout)
+
     @patch('amulet.helpers.juju', Mock(return_value='status'))
     @patch('amulet.helpers.default_environment', Mock())
     @patch.object(UnitSentry, 'upload_scripts', Mock())
