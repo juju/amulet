@@ -278,7 +278,7 @@ class Talisman(object):
         normalized = {}
         for number, machine in status['machines'].items():
             machine_states[number] = machine.get('agent-state')
-            for container_name, container in machine.get('containers', {}):
+            for container_name, container in machine.get('containers', {}).items():
                 machine_states[container_name] = container.get('agent-state')
         for service_name, service in status['services'].items():
             if 'units' not in service and 'relations' not in service:
@@ -286,9 +286,8 @@ class Talisman(object):
                 continue
             normalized.setdefault(service_name, {})
             for unit_name, unit in service.get('units', {}).items():
-                machine = status['machines'].get(unit.get('machine'), {})
                 normalized[service_name][unit_name] = {
-                    'machine-state': machine_states['agent-state'],
+                    'machine-state': machine_states.get(unit.get('machine')),
                     'public-address': unit.get('public-address'),
                     'workload-status': unit.get('workload-status', {}),
                     'agent-status': unit.get('agent-status', {}),
@@ -299,7 +298,7 @@ class Talisman(object):
                     sub_service = sub_name.split('/')[0]
                     normalized.setdefault(sub_service, {})
                     normalized[sub_service][sub_name] = {
-                        'machine-state': machine.get('agent-state'),
+                        'machine-state': machine_states.get(unit.get('machine')),
                         'public-address': sub.get('public-address'),
                         'workload-status': sub.get('workload-status', {}),
                         'agent-status': sub.get('agent-status', {}),
