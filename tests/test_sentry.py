@@ -200,6 +200,15 @@ class TalismanTest(unittest.TestCase):
         self.assertEqual(sentry['meteor/0'], sentry.unit['meteor/0'])
         self.assertEqual(sentry['meteor'], list(sentry.unit.values()))
 
+        with self.assertRaises(KeyError):
+            sentry['meteor/99']  # Non-existent unit.
+
+        # Non-existent service, or service with no units.
+        self.assertEqual(sentry['invalid'], [])
+
+        with self.assertRaises(KeyError):
+            sentry['invalid/99']  # Non-existent unit in non-existent service.
+
     @patch.object(Talisman, 'wait_for_status')
     @patch.object(UnitSentry, 'upload_scripts')
     @patch('amulet.sentry.helpers.default_environment')
