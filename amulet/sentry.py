@@ -233,6 +233,11 @@ class Talisman(object):
         If the second form is used, a single object, the UnitSentry for
         the specified unit, is returned.
 
+        Raises a KeyError if the unit does not exist.
+
+        Returns an empty list if the service does not exist or has
+        no units.
+
         Examples::
 
             >>> d
@@ -252,21 +257,13 @@ class Talisman(object):
             >>>
 
         """
-        single_unit = '/' in service
-
-        def match(service, unit_name):
-            if single_unit:
-                return service == unit_name
-            return service == unit_name.split('/')[0]
-
-        unit_sentries = [unit_sentry
-                         for unit_name, unit_sentry in self.unit.items()
-                         if match(service, unit_name)]
-
-        if single_unit and unit_sentries:
-            return unit_sentries[0]
-
-        return unit_sentries
+        if '/' in service:
+            unit_name = service
+            return self.unit[unit_name]
+        else:
+            return [unit_sentry
+                    for unit_name, unit_sentry in self.unit.items()
+                    if service == unit_name.split('/', 1)[0]]
 
     def get_status(self, juju_env=None):
         """
