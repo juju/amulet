@@ -198,7 +198,7 @@ class TalismanTest(unittest.TestCase):
         sentry = Talisman(['meteor'], timeout=self.timeout)
 
         self.assertEqual(sentry['meteor/0'], sentry.unit['meteor/0'])
-        self.assertEqual(sentry['meteor'], list(sentry.unit.values()))
+        self.assertSetEqual(set(sentry['meteor']), set(sentry.unit.values()))
 
         with self.assertRaises(KeyError):
             sentry['meteor/99']  # Non-existent unit.

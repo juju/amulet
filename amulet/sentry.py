@@ -262,7 +262,7 @@ class Talisman(object):
             return self.unit[unit_name]
         else:
             return [unit_sentry
-                    for unit_name, unit_sentry in self.unit.items()
+                    for unit_name, unit_sentry in sorted(self.unit.items())
                     if service == unit_name.split('/', 1)[0]]
 
     def get_status(self, juju_env=None):
