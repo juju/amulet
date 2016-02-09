@@ -162,7 +162,7 @@ class Deployment(object):
 
         return service
 
-    def add_unit(self, service, units=1, target=None):
+    def add_unit(self, service, units=1, target=None, timeout=300):
         if not isinstance(units, int) or units < 1:
             raise ValueError('Only positive integers can be used for units')
         if target is not None and units != 1:
@@ -179,7 +179,7 @@ class Deployment(object):
             if target is not None:
                 args.extend(["--to", target])
             juju(args)
-            self.sentry = Talisman(self.services)
+            self.sentry = Talisman(self.services, timeout=timeout)
 
     def remove_unit(self, *units):
         if not self.deployed:
