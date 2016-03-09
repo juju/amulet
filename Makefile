@@ -92,7 +92,6 @@ all: clean venv coverage lint
 .PHONY: docs
 docs: venv
 	$(PIP) list | grep Sphinx || $(PIP) install -U sphinx
-	$(PIP) list | grep Sphinx-PyPI-upload-2 || $(PIP) install -U sphinx-pypi-upload-2
 	cd docs && make html && cd -
 
 # ###########
@@ -104,7 +103,7 @@ dist: docs
 
 .PHONY: upload
 upload: docs
-	$(PY) setup.py sdist upload upload_sphinx --upload-dir=docs/_build/html
+	$(PY) setup.py sdist upload upload_docs --upload-dir=docs/_build/html
 
 .PHONY: version_update
 version_update:
