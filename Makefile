@@ -89,18 +89,23 @@ check: test lint
 .PHONY: all
 all: clean venv coverage lint
 
+.PHONY: docs
+docs: venv
+	$(PIP) list | grep Sphinx || $(PIP) install -U sphinx
+	cd docs && make html && cd -
 
 # ###########
 # Deploy
 # ###########
 .PHONY: dist
-dist:
+dist: docs
 	$(PY) setup.py sdist
 
 .PHONY: upload
-upload:
-	$(PY) setup.py sdist upload
+upload: docs
+	$(PY) setup.py sdist upload upload_docs --upload-dir=docs/_build/html
 
 .PHONY: version_update
 version_update:
 	$(EDITOR) setup.py
+
