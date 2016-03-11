@@ -53,7 +53,7 @@ sysdeps:
 # ###########
 
 $(NOSE): $(PY)
-	$(PIP) install -r test-requires.txt
+	$(PIP) install --no-cache-dir -r test-requires.txt
 
 .PHONY: test
 test: $(NOSE)
