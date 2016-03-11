@@ -2,7 +2,7 @@ from setuptools import setup
 
 install_requires = [
     'requests',
-    'charmworldlib',
+    'libcharmstore',
     'PyYAML',
     'path.py'
 ]

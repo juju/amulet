@@ -8,7 +8,7 @@ import yaml
 
 from .helpers import reify
 from .helpers import run_bzr
-from charmworldlib.charm import Charm
+from charmstore import Charm
 from path import path
 from path import tempdir
 

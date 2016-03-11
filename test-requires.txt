@@ -6,5 +6,5 @@ cherrypy
 pyyaml
 requests
 path.py
-charmworldlib
+libcharmstore>=0.0.2
 juju-deployer
