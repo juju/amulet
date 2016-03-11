@@ -10,7 +10,7 @@ class TestDeployment(unittest.TestCase):
         cls.deployment = amulet.Deployment(series='precise')
 
         cls.deployment.add('nagios')
-        cls.deployment.add('haproxy')
+        cls.deployment.add('haproxy', charm='cs:~marcoceppi/precise/haproxy-0')
         cls.deployment.add('rsyslog-forwarder')
         cls.deployment.relate('nagios:website', 'haproxy:reverseproxy')
         cls.deployment.relate('nagios:juju-info', 'rsyslog-forwarder:juju-info')
@@ -24,9 +24,9 @@ class TestDeployment(unittest.TestCase):
         except:
             raise
 
-        cls.nagios = cls.deployment.sentry['nagios/0']
-        cls.haproxy = cls.deployment.sentry['haproxy/0']
-        cls.rsyslogfwd = cls.deployment.sentry['rsyslog-forwarder/0']
+        cls.nagios = cls.deployment.sentry['nagios'][0]
+        cls.haproxy = cls.deployment.sentry['haproxy'][0]
+        cls.rsyslogfwd = cls.deployment.sentry['rsyslog-forwarder'][0]
         cls.nagios.run(
             'sudo mkdir -p /tmp/amulet-test/test-dir;'
             'sudo chmod go-rx /tmp/amulet-test;'
