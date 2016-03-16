@@ -424,10 +424,13 @@ class Talisman(object):
 
         :param str juju_env: Name of the juju environment.
         :param dict services: Dictionary of services in the environment.
-        :param int timeout: Time to wait before timing out.
+        :param int timeout: Time to wait before timing out. If environment
+            variable AMULET_WAIT_TIMEOUT is set, it overrides this value.
         :return: Dictionary of juju enviroment status.
 
         """
+        timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
+
         def check_status(juju_env, services):
             status = self.get_status(juju_env)
             for service_name in services:
@@ -462,9 +465,13 @@ class Talisman(object):
         """Wait for all units to finish running hooks.
 
         :param int timeout: Number of seconds to wait before timing-out.
+            If environment variable AMULET_WAIT_TIMEOUT is set, it overrides
+            this value.
         :raises: :class:`amulet.TimeoutError` if the timeout is exceeded.
 
         """
+        timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
+
         def check_status():
             status = self.get_status()
             for service_name in self.service_names:
