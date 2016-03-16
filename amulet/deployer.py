@@ -590,6 +590,8 @@ class Deployment(object):
             :class:`amulet.helpers.TimeoutError`.
 
         :param timeout: Amount of time to wait for deployment to complete.
+            If environment variable AMULET_SETUP_TIMEOUT is set, it overrides
+            this value.
         :param cleanup: Set to False to leave the generated deployer file
             on disk. Useful for debugging.
 
@@ -608,6 +610,8 @@ class Deployment(object):
                 pass
 
         """
+        timeout = int(os.environ.get('AMULET_SETUP_TIMEOUT') or timeout)
+
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
