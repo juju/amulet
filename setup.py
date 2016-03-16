@@ -1,4 +1,12 @@
+import os
+
 from setuptools import setup
+
+version_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'VERSION'))
+
+with open(version_file) as v:
+    VERSION = v.read().strip()
 
 install_requires = [
     'requests',
@@ -16,7 +24,7 @@ tests_require = [
 
 setup(
     name='amulet',
-    version='1.14.0',
+    version=VERSION,
     description='Tools to help with writing Juju Charm Functional tests',
     install_requires=install_requires,
     package_data={'amulet': ['unit-scripts/amulet/*']},
