@@ -309,13 +309,15 @@ class Talisman(object):
 
         self.juju_env = juju_env or helpers.default_environment()
 
-        status = self.wait_for_status(self.juju_env, services, timeout)
+        # Save the juju status so we can inspect it later if we don't
+        # end up with what we expect in our dictionary of sentries.
+        self.status = self.wait_for_status(self.juju_env, services, timeout)
 
         for service in services:
-            if service not in status['services']:
+            if service not in self.status['services']:
                 continue  # Raise something?
 
-            service_status = status['services'][service]
+            service_status = self.status['services'][service]
 
             if 'units' not in service_status:
                 continue
