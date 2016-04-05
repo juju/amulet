@@ -265,7 +265,7 @@ class Deployment(object):
             if target is not None:
                 args.extend(["--to", target])
             juju(args)
-            self.sentry = Talisman(self.services)
+            self.sentry = Talisman(self.services, juju_env=self.juju_env)
 
     def remove_unit(self, *units):
         """Remove (destroy) one or more already-deployed units.
@@ -639,7 +639,8 @@ class Deployment(object):
             with self._deploy_w_timeout(timeout):
                 subprocess.check_call(shlex.split(cmd))
 
-        self.sentry = Talisman(self.services, timeout=timeout)
+        self.sentry = Talisman(
+            self.services, timeout=timeout, juju_env=self.juju_env)
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)
