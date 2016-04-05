@@ -92,41 +92,6 @@ class HelpersTest(unittest.TestCase):
 
         self.assertRaises(IOError, environments)
 
-    @patch('amulet.helpers.JUJU_VERSION')
-    @patch('amulet.helpers.environments')
-    def test_default_environment(self, menvironments, version):
-        version.major = 1
-        menvironments.return_value = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
-        default = default_environment()
-        self.assertEqual('gojuju', default)
-
-    @patch('amulet.helpers.JUJU_VERSION')
-    @patch('amulet.helpers.environments')
-    def test_default_environment_no_default(self, menvironments, version):
-        version.major = 1
-        environments_yaml = """
-        environments:
-          gojuju1:
-            type: cloud
-            access-key: xxx
-            secret-key: yyy
-            control-bucket: gojuju-xyxyz
-            admin-secret: zyxyx
-            default-series: world"""
-        menvironments.return_value = yaml.safe_load(environments_yaml)
-        self.assertEqual('gojuju1', default_environment())
-
-    @patch('amulet.helpers.JUJU_VERSION')
-    @patch('amulet.helpers.environments')
-    def test_default_environment_no_default_multi_fail(
-            self, menvironments, version):
-        version.major = 1
-        envs = yaml.safe_load(RAW_ENVIRONMENTS_YAML)
-        del envs['default']
-        menvironments.return_value = envs
-
-        self.assertRaises(ValueError, default_environment)
-
     @patch('amulet.helpers.juju', Mock(return_value='status'))
     def test_timeout_gen(self):
         def case(t):
