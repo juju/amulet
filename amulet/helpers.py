@@ -163,6 +163,7 @@ class JujuVersion(object):
     def __str__(self):
         return '.'.join(str(v) for v in [self.major, self.minor, self.patch]
                         if v is not None)
+JUJU_VERSION = JujuVersion()
 
 
 def environments(juju_home=None):
@@ -186,6 +187,13 @@ def raise_status(code, msg=None):
 
 
 def default_environment(juju_home=None):
+    if JUJU_VERSION.major == 1:
+        return _default_environment_juju_1(juju_home=juju_home)
+    else:
+        return _default_environment_juju_2()
+
+
+def _default_environment_juju_1(juju_home=None):
     juju_home = os.path.expanduser(
         juju_home or os.environ.get('JUJU_HOME') or '~/.juju/')
     envs = environments(juju_home)
@@ -208,6 +216,10 @@ def default_environment(juju_home=None):
             raise ValueError('No default environment specified.')
 
         return next(iter(envs['environments'].keys()))
+
+
+def _default_environment_juju_2():
+    return subprocess.check_output(['juju', 'switch']).strip().decode('utf8')
 
 
 class reify(object):

@@ -19,3 +19,5 @@ __pycache__/
 /setuptools-12.2.zip
 /setuptools-12.3.zip
 docs/_build/
+.venv/
+*.sw[nop]
