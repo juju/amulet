@@ -13,8 +13,10 @@ from mock import patch, Mock
 
 
 class WaiterTest(unittest.TestCase):
+    @patch('amulet.waiter.JUJU_VERSION')
     @patch('amulet.waiter.juju')
-    def test_get_pyjuju_status(self, mock_check_output):
+    def test_get_pyjuju_status(self, mock_check_output, version):
+        version.major = 1
         mstatus = JujuStatus('juju')
         mstatus.add('wordpress')
         mstatus.add('mysql', state='pending')
@@ -159,7 +161,7 @@ class WaitTest(unittest.TestCase):
         waiter_status.assert_called_with(juju_env='testing-env')
 
     @patch('amulet.waiter.state')
-    @patch('amulet.default_environment')
+    @patch('amulet.waiter.default_environment')
     @patch.dict('os.environ', {'JUJU_HOME': '/tmp/juju-home'})
     def test_wait_default_juju_env(self, default_env, waiter_status):
         if not os.path.exists('/tmp/juju-home'):
