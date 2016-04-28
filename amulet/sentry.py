@@ -82,7 +82,12 @@ class UnitSentry(Sentry):
         source = pkg_resources.resource_filename(
             'amulet', os.path.join('unit-scripts', 'amulet'))
         dest = '/tmp/amulet'
-        output, code = self.ssh('mkdir -p -m a=rwx {}'.format(dest), raise_on_failure=True)
+        mkdir_cmd = 'mkdir -p -m a=rwx {}'.format(dest)
+        output, code = self.ssh(mkdir_cmd, raise_on_failure=False)
+        if code != 0:
+            # try one more time
+            self.ssh(mkdir_cmd, raise_on_failure=True)
+
         # copy one at a time b/c `juju scp -r` doesn't work (currently)
         for f in glob.glob(os.path.join(source, '*.py')):
             cmd = "juju scp {} {}:{}".format(
@@ -217,7 +222,7 @@ class UnitSentry(Sentry):
 
         """
         unit = unit or self.info['unit_name']
-        cmd = ['juju', 'ssh', unit, command]
+        cmd = ['juju', 'ssh', unit, '-v', command]
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -225,8 +230,10 @@ class UnitSentry(Sentry):
         )
         stdout, stderr = p.communicate()
         output = stdout if p.returncode == 0 else stderr
-        if raise_on_failure and p.returncode != 0:
-            raise subprocess.CalledProcessError(p.returncode, cmd, output)
+        if p.returncode != 0:
+            print(output)
+            if raise_on_failure:
+                raise subprocess.CalledProcessError(p.returncode, cmd, output)
         return output.decode('utf8').strip(), p.returncode
 
     def _run_unit_script(self, cmd, working_dir=None):
