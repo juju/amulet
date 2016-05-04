@@ -10,6 +10,7 @@ import yaml
 from amulet import Deployment
 from amulet.deployer import get_charm_name
 from amulet.sentry import UnitSentry
+from amulet.helpers import JUJU_VERSION
 from mock import patch, MagicMock, call
 from collections import OrderedDict
 
@@ -152,7 +153,8 @@ class DeployerTests(unittest.TestCase):
                         'public-address': '10.0.3.{}'.format(total_units),
                         'machine': str(total_units)}
                     status['machines'][str(total_units)] = {
-                        'agent-state': 'started',
+                        'agent-state': 'started',  # juju1
+                        'juju-status': {'current': 'started'},  # juju2+
                     }
             status['services']['relation-sentry'] = {
                 'units': {
@@ -161,7 +163,8 @@ class DeployerTests(unittest.TestCase):
                         'public-address': '10.0.3.1',
                         'machine': str(total_units+1)}}}
             status['machines'][str(total_units+1)] = {
-                'agent-state': 'started',
+                'agent-state': 'started',  # juju1
+                'juju-status': {'current': 'started'},  # juju2+
             }
             return status
         return _mock_status
@@ -474,7 +477,12 @@ class DeployerTests(unittest.TestCase):
         d.add('mysql')
         actions = d.action_defined('mysql')
         self.assertEquals(actions, {"action": "description"})
-        mj.assert_has_calls([call(['action', 'defined', 'mysql', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'defined', 'mysql', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['list-actions', 'mysql', '--format', 'json'])])
 
     @patch('amulet.deployer.juju')
     def test_action_do(self, mj):
@@ -483,7 +491,12 @@ class DeployerTests(unittest.TestCase):
         d.add('mysql')
         uuid = d.action_do('mysql/0', 'run')
         self.assertEquals(uuid, "some-action-id")
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json'])])
 
     @patch('amulet.deployer.juju')
     def test_action_fetch(self, mj):
@@ -498,8 +511,14 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid)
         self.assertEquals(results, {'key': 'value'})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
-                            call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
+                call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
     @patch('amulet.deployer.juju')
     def test_action_fetch_nowait_fail(self, mj):
@@ -513,8 +532,14 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid, timeout=None)
         self.assertEquals(results, {})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
-                             call(['action', 'fetch', 'some-action-id', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json']),
+                call(['show-action-output', 'some-action-id', '--format', 'json'])])
 
     @patch('amulet.deployer.juju')
     def test_action_fetch_wait(self, mj):
@@ -529,8 +554,14 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid)
         self.assertEquals(results, {'key': 'value'})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
-                             call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json']),
+                call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):

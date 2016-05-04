@@ -13,7 +13,8 @@ class TestDeployment(unittest.TestCase):
         cls.deployment.add('haproxy', charm='cs:~marcoceppi/precise/haproxy-0')
         cls.deployment.add('rsyslog-forwarder')
         cls.deployment.relate('nagios:website', 'haproxy:reverseproxy')
-        cls.deployment.relate('nagios:juju-info', 'rsyslog-forwarder:juju-info')
+        cls.deployment.relate(
+            'nagios:juju-info', 'rsyslog-forwarder:juju-info')
 
         try:
             cls.deployment.setup(timeout=900)
@@ -77,7 +78,8 @@ class TestDeployment(unittest.TestCase):
             self.rsyslogfwd.file_contents(path),
             'more-contents\n',
         )
-        self.assertIn('rsyslog', self.rsyslogfwd.file_contents('metadata.yaml'))
+        self.assertIn(
+            'rsyslog', self.rsyslogfwd.file_contents('metadata.yaml'))
 
     def test_directory_stat(self):
         path = '/tmp/amulet-test'
@@ -108,7 +110,8 @@ class TestDeployment(unittest.TestCase):
                 'directories': ['test-dir'],
             },
         )
-        self.assertIn('install', self.nagios.directory_listing('hooks')['files'])
+        self.assertIn(
+            'install', self.nagios.directory_listing('hooks')['files'])
 
     def test_relation(self):
         nagios_info = self.nagios.relation(

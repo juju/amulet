@@ -10,7 +10,12 @@ import yaml
 from path import path
 from path import tempdir
 
-from .helpers import default_environment, juju, timeout as unit_timesout
+from .helpers import (
+    default_environment,
+    juju,
+    timeout as unit_timesout,
+    JUJU_VERSION,
+)
 from .sentry import Talisman
 from .charm import CharmCache
 
@@ -382,7 +387,7 @@ class Deployment(object):
             raise LookupError('Need at least two services:relation')
 
         for srv_rel in args:
-            if not ':' in srv_rel:
+            if ':' not in srv_rel:
                 raise ValueError('All relations must be explicit, ' +
                                  'service:relation')
 
@@ -433,7 +438,7 @@ class Deployment(object):
             raise LookupError('Need exactly two service:relations')
 
         for srv_rel in args:
-            if not ':' in srv_rel:
+            if ':' not in srv_rel:
                 raise ValueError('All relations must be explicit, ' +
                                  'service:relation')
         relation = list(args)
@@ -480,7 +485,8 @@ class Deployment(object):
                 service['options'][k] = v
 
         if self.deployed:
-            opts = ['set', service]
+            juju_set_cmd = 'set' if JUJU_VERSION.major == 1 else 'set-config'
+            opts = [juju_set_cmd, service]
             for k, v in options.items():
                 opts.append("%s=%s" % (k, v))
             return juju(opts)
@@ -488,7 +494,7 @@ class Deployment(object):
         if service not in self.services:
             raise ValueError('Service has not yet been described')
 
-        if not 'options' in self.services[service]:
+        if 'options' not in self.services[service]:
             self.services[service]['options'] = options
         else:
             self.services[service]['options'].update(options)
@@ -540,8 +546,17 @@ class Deployment(object):
         if service not in self.services:
             raise ValueError(
                 'Service needs to be added before listing actions.')
-        raw = juju(['action', 'defined', service, '--format', 'json'])
-        return json.loads(raw)
+
+        if JUJU_VERSION.major == 1:
+            raw = juju(['action', 'defined', service, '--format', 'json'])
+        else:
+            raw = juju(['list-actions', service, '--format', 'json'])
+
+        try:
+            result = json.loads(raw)
+        except ValueError:
+            result = {}
+        return result
 
     def action_do(self, unit, action, action_args={}):
         """Run action on a unit and return the result UUID.
@@ -553,9 +568,15 @@ class Deployment(object):
         """
         if '/' not in unit:
             raise ValueError('%s is not a unit' % unit)
-        cmd = ['action', 'do', unit, action, '--format', 'json']
+
+        if JUJU_VERSION.major == 1:
+            cmd = ['action', 'do', unit, action, '--format', 'json']
+        else:
+            cmd = ['run-action', unit, action, '--format', 'json']
+
         for key, value in action_args.items():
             cmd += ["%s=%s" % (str(key), str(value))]
+
         result = juju(cmd)
         action_result = json.loads(result)
         results_id = action_result["Action queued with id"]
@@ -572,7 +593,11 @@ class Deployment(object):
         :return: Action results, as json.
 
         """
-        cmd = ['action', 'fetch', action_id, '--format', 'json']
+        if JUJU_VERSION.major == 1:
+            cmd = ['action', 'fetch', action_id, '--format', 'json']
+        else:
+            cmd = ['show-action-output', action_id, '--format', 'json']
+
         if timeout is not None:
             cmd += ["--wait", str(timeout)]
         raw = juju(cmd)

@@ -1,3 +1,4 @@
+import gc
 import glob
 import json
 import logging
@@ -9,6 +10,8 @@ import pkg_resources
 
 from . import waiter
 from . import helpers
+
+JUJU_VERSION = helpers.JUJU_VERSION
 
 
 # number of seconds an agent must be idle to be considered quiescent
@@ -388,10 +391,21 @@ class Talisman(object):
         status = waiter.status(juju_env or self.juju_env)
         machine_states = {}
         normalized = {}
+
+        def machine_state(machine_dict):
+            if JUJU_VERSION.major == 1:
+                return machine_dict.get('agent-state')
+            return machine_dict.get('juju-status', {}).get('current')
+
+        def agent_status(unit_dict):
+            key = 'agent-status' if JUJU_VERSION.major == 1 else 'juju-status'
+            return unit_dict.get(key, {})
+
         for number, machine in status['machines'].items():
-            machine_states[number] = machine.get('agent-state')
+            machine_states[number] = machine_state(machine)
             for container_name, container in machine.get('containers', {}).items():
-                machine_states[container_name] = container.get('agent-state')
+                machine_states[container_name] = machine_state(container)
+
         for service_name, service in status['services'].items():
             if 'units' not in service and 'relations' not in service:
                 # ignore unrelated subordinates; they will never become ready
@@ -402,7 +416,7 @@ class Talisman(object):
                     'machine-state': machine_states.get(unit.get('machine')),
                     'public-address': unit.get('public-address'),
                     'workload-status': unit.get('workload-status', {}),
-                    'agent-status': unit.get('agent-status', {}),
+                    'agent-status': agent_status(unit),
                     'agent-state': unit.get('agent-state'),
                     'agent-state-info': unit.get('agent-state-info'),
                 }
@@ -413,7 +427,7 @@ class Talisman(object):
                         'machine-state': machine_states.get(unit.get('machine')),
                         'public-address': sub.get('public-address'),
                         'workload-status': sub.get('workload-status', {}),
-                        'agent-status': sub.get('agent-status', {}),
+                        'agent-status': agent_status(sub),
                         'agent-state': sub.get('agent-state'),
                         'agent-state-info': sub.get('agent-state-info'),
                     }
@@ -440,8 +454,7 @@ class Talisman(object):
         """
         timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
 
-        def check_status(juju_env, services):
-            status = self.get_status(juju_env)
+        def check_status(status, juju_env, services):
             for service_name in services:
                 if service_name not in status:
                     # ignore unrelated subordinates; they will never become ready
@@ -467,8 +480,11 @@ class Talisman(object):
             return True
 
         for i in helpers.timeout_gen(timeout):
-            if check_status(juju_env, services):
+            status = self.get_status(juju_env)
+            if check_status(status, juju_env, services):
                 return waiter.status(juju_env)
+            del status
+            gc.collect()
 
     def wait(self, timeout=300):
         """Wait for all units to finish running hooks.
@@ -481,8 +497,7 @@ class Talisman(object):
         """
         timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
 
-        def check_status():
-            status = self.get_status()
+        def check_status(status):
             for service_name in self.service_names:
                 service = status.get(service_name, {})
                 for unit_name, unit in service.items():
@@ -502,10 +517,13 @@ class Talisman(object):
                  timeout)
         start = datetime.now()
         for i in helpers.timeout_gen(timeout):
-            if check_status():
+            status = self.get_status()
+            if check_status(status):
                 log.info('Deployment settled in %s seconds.',
                          (datetime.now() - start).total_seconds())
                 return
+            del status
+            gc.collect()
 
     def wait_for_messages(self, messages, timeout=300):
         """Wait for specific extended status messages to be set via status-set.
@@ -563,6 +581,8 @@ class Talisman(object):
                     break
             else:
                 return
+            del status
+            gc.collect()
 
     def _sync(self):
         pass
@@ -610,9 +630,10 @@ class StatusMessageMatcher(object):
         """
         Check a list of strings or regexps against a list of messages.
 
-        Each expected string or regexp must match once, and all messages must be matched.
-        If an expected string or regexp matches multiple messages, longer matches are
-        preferred, to resolve the ambiguity.
+        Each expected string or regexp must match once, and all messages must
+        be matched.  If an expected string or regexp matches multiple messages,
+        longer matches are preferred, to resolve the ambiguity.
+
         """
         if len(actual) != len(expected):
             return False
@@ -634,7 +655,9 @@ class StatusMessageMatcher(object):
         """
         Check a single string or regexp against a single message.
 
-        Returns the length of the match (0 for no match), to allow for preferring longer matches.
+        Returns the length of the match (0 for no match), to allow for
+        preferring longer matches.
+
         """
         if hasattr(expected, 'search'):
             m = expected.search(actual)

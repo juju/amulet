@@ -19,6 +19,8 @@ from mock import patch, Mock
 mock_status = yaml.load("""\
 machines:
   "0":
+    juju-status:
+      current: started
     agent-state: started
     agent-version: 1.24.6.1
     dns-name: localhost
@@ -26,16 +28,22 @@ machines:
     series: trusty
     state-server-member-status: has-vote
   "1":
+    juju-status:
+      current: started
     agent-state: started
     instance-id: johnsca-local-machine-1
     series: trusty
     hardware: arch=amd64
   "2":
+    juju-status:
+      current: started
     agent-state: started
     instance-id: johnsca-local-machine-1
     series: trusty
     hardware: arch=amd64
   "3":
+    juju-status:
+      current: pending
     agent-state: pending
     instance-id: johnsca-local-machine-1
     series: trusty
@@ -52,6 +60,9 @@ services:
         agent-status:
           current: idle
           since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
+          current: idle
+          since: 24 Sep 2015 16:44:44-04:00
         machine: "1"
       meteor/1:
         public-address: 10.0.3.177
@@ -60,6 +71,9 @@ services:
           message: ready
           since: 24 Sep 2015 16:44:44-04:00
         agent-status:
+          current: idle
+          since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
           current: idle
           since: 24 Sep 2015 16:44:44-04:00
         machine: "2"
@@ -90,6 +104,9 @@ services:
         agent-status:
           current: allocating
           since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
+          current: allocating
+          since: 24 Sep 2015 16:44:44-04:00
         machine: "3"
   nopublic:
     units:
@@ -99,6 +116,9 @@ services:
           message: working
           since: 24 Sep 2015 16:44:44-04:00
         agent-status:
+          current: executing
+          since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
           current: executing
           since: 24 Sep 2015 16:44:44-04:00
         machine: "2"
@@ -111,6 +131,9 @@ services:
           message: 'hook failed: "install"'
           since: 24 Sep 2015 16:44:44-04:00
         agent-status:
+          current: idle
+          since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
           current: idle
           since: 24 Sep 2015 16:44:44-04:00
         machine: "2"
@@ -146,12 +169,18 @@ services:
         agent-status:
           current: started
           since: 24 Sep 2015 16:44:44-04:00
+        juju-status:
+          current: started
+          since: 24 Sep 2015 16:44:44-04:00
         agent-state: pending
         machine: "2"
         subordinates:
           sub/0:
             public-address: 10.0.3.115
             agent-status:
+              current: started
+              since: 24 Sep 2015 16:44:44-04:00
+            juju-status:
               current: started
               since: 24 Sep 2015 16:44:44-04:00
   sub:
@@ -248,8 +277,18 @@ class TalismanTest(unittest.TestCase):
             'machines': {
                 '0': {
                     'containers': {
-                        '0/lxc/1': {'agent-state': 'started'},
-                        '0/lxc/2': {'agent-state': 'pending'},
+                        '0/lxc/1': {
+                            'agent-state': 'started',
+                            'juju-status': {
+                                'current': 'started'
+                            }
+                        },
+                        '0/lxc/2': {
+                            'agent-state': 'pending',
+                            'juju-status': {
+                                'current': 'pending'
+                            }
+                        },
                     },
                 },
             },
@@ -298,10 +337,13 @@ class TalismanTest(unittest.TestCase):
 
         set_state('workload-status', 'current', 'active')
         set_state('agent-status', 'current', 'executing')
+        set_state('juju-status', 'current', 'executing')
         self.assertRaises(TimeoutError, t.wait, self.timeout)
 
         set_state('agent-status', 'current', 'idle')
         set_state('agent-status', 'since', datetime.now().strftime('%d %b %Y %H:%M:%S'))
+        set_state('juju-status', 'current', 'idle')
+        set_state('juju-status', 'since', datetime.now().strftime('%d %b %Y %H:%M:%S'))
         self.assertRaises(TimeoutError, t.wait, self.timeout)
 
         t = Talisman(['old'], timeout=self.timeout)
