@@ -5,17 +5,18 @@ import logging
 import os
 import shlex
 import subprocess
+import warnings
 import yaml
 
 from path import path
 from path import tempdir
 
+from . import actions
 from .helpers import (
     default_environment,
     juju,
     timeout as unit_timesout,
     JUJU_VERSION,
-    TimeoutError,
 )
 from .sentry import Talisman
 from .charm import CharmCache
@@ -543,45 +544,41 @@ class Deployment(object):
         :param service: Name of service for which to list actions.
         :return: List of actions, as json.
 
+        .. deprecated:: 1.15
+           Use :meth:`UnitSentry.list_actions instead.`
+
         """
+        warnings.warn(
+            'Deployment.action_defined is deprecated, use '
+            'UnitSentry.list_actions instead.',
+            DeprecationWarning
+        )
+
         if service not in self.services:
             raise ValueError(
                 'Service needs to be added before listing actions.')
 
-        if JUJU_VERSION.major == 1:
-            raw = juju(['action', 'defined', service, '--format', 'json'])
-        else:
-            raw = juju(['list-actions', service, '--format', 'json'])
+        return actions.list_actions(service)
 
-        try:
-            result = json.loads(raw)
-        except ValueError:
-            result = {}
-        return result
-
-    def action_do(self, unit, action, action_args={}):
+    def action_do(self, unit, action, action_args=None):
         """Run action on a unit and return the result UUID.
 
         :param unit: Unit on which to run action, e.g. "wordpress/0"
         :param action: Name of action to run.
         :param action_args: Dictionary of action parameters.
+        :return str: The action UUID.
+
+        .. deprecated:: 1.15
+           Use :meth:`UnitSentry.run_action instead.`
 
         """
-        if '/' not in unit:
-            raise ValueError('%s is not a unit' % unit)
+        warnings.warn(
+            'Deployment.action_do is deprecated, use '
+            'UnitSentry.run_action instead.',
+            DeprecationWarning
+        )
 
-        if JUJU_VERSION.major == 1:
-            cmd = ['action', 'do', unit, action, '--format', 'json']
-        else:
-            cmd = ['run-action', unit, action, '--format', 'json']
-
-        for key, value in action_args.items():
-            cmd += ["%s=%s" % (str(key), str(value))]
-
-        result = juju(cmd)
-        action_result = json.loads(result)
-        results_id = action_result["Action queued with id"]
-        return results_id
+        return actions.run_action(unit, action, action_args=action_args)
 
     def action_fetch(
             self, action_id, timeout=600, raise_on_timeout=False,
@@ -607,30 +604,11 @@ class Deployment(object):
         :return: Action results, as json.
 
         """
-        if JUJU_VERSION.major == 1:
-            cmd = ['action', 'fetch', action_id, '--format', 'json']
-        else:
-            cmd = ['show-action-output', action_id, '--format', 'json']
-
-        if timeout is not None:
-            cmd += ["--wait", str(timeout)]
-        raw = juju(cmd)
-        result = json.loads(raw)
-        status = result['status']
-
-        if status == 'running' and raise_on_timeout:
-            raise TimeoutError(
-                'Action {} still running after {}s'.format(
-                    action_id, timeout))
-
-        if full_output:
-            return result
-
-        if status == 'completed':
-            if 'results' in result:
-                return result['results']
-
-        return {}
+        return actions.get_action_output(
+            action_id, timeout=timeout, raise_on_timeout=raise_on_timeout,
+            full_output=full_output
+        )
+    get_action_output = action_fetch
 
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.

@@ -470,7 +470,7 @@ class DeployerTests(unittest.TestCase):
             self.assertEqual(
                 str(e), 'All relations must be explicit, service:relation')
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_defined(self, mj):
         mj.return_value = '{"action": "description"}'
         d = Deployment(juju_env='gojuju')
@@ -484,7 +484,7 @@ class DeployerTests(unittest.TestCase):
             mj.assert_has_calls([
                 call(['list-actions', 'mysql', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_do(self, mj):
         mj.return_value = '{"Action queued with id": "some-action-id"}'
         d = Deployment(juju_env='gojuju')
@@ -498,7 +498,7 @@ class DeployerTests(unittest.TestCase):
             mj.assert_has_calls([
                 call(['run-action', 'mysql/0', 'run', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"results":{"key":"value"},"status":"completed",'
@@ -520,7 +520,7 @@ class DeployerTests(unittest.TestCase):
                 call(['run-action', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
                 call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_nowait_fail(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"status":"running",'
@@ -541,7 +541,7 @@ class DeployerTests(unittest.TestCase):
                 call(['run-action', 'mysql/0', 'run', '--format', 'json']),
                 call(['show-action-output', 'some-action-id', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_wait(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"results":{"key":"value"},"status":"completed",'
@@ -563,7 +563,7 @@ class DeployerTests(unittest.TestCase):
                 call(['run-action', 'mysql/0', 'run', '--format', 'json']),
                 call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_raise_on_timeout(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"status":"running",'
@@ -575,7 +575,7 @@ class DeployerTests(unittest.TestCase):
         with self.assertRaises(TimeoutError):
             d.action_fetch(uuid, timeout=None, raise_on_timeout=True)
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_full_output(self, mj):
         action_output = ['{"Action queued with id": "some-action-id"}',
                          '{"results":{"key":"value"},"status":"completed",'

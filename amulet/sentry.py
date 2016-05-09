@@ -8,6 +8,7 @@ from datetime import datetime
 
 import pkg_resources
 
+from . import actions
 from . import waiter
 from . import helpers
 
@@ -80,6 +81,27 @@ class UnitSentry(Sentry):
         d['service'], d['unit'] = unit.split('/')
         unitsentry.upload_scripts()
         return unitsentry
+
+    def list_actions(self):
+        """Return list of actions defined for this unit.
+
+        :return: List of actions, as json.
+
+        """
+        return actions.list_actions(self.info['service'])
+    action_defined = list_actions
+
+    def run_action(self, action, action_args=None):
+        """Run an action on this unit and return the result UUID.
+
+        :param action: Name of action to run.
+        :param action_args: Dictionary of action parameters.
+        :return str: The action UUID.
+
+        """
+        return actions.run_action(
+            self.info['unit_name'], action, action_args=action_args)
+    action_do = run_action
 
     def upload_scripts(self):
         source = pkg_resources.resource_filename(
