@@ -10,7 +10,7 @@ import yaml
 from amulet import Deployment
 from amulet.deployer import get_charm_name
 from amulet.sentry import UnitSentry
-from amulet.helpers import JUJU_VERSION
+from amulet.helpers import JUJU_VERSION, TimeoutError
 from mock import patch, MagicMock, call
 from collections import OrderedDict
 
@@ -562,6 +562,32 @@ class DeployerTests(unittest.TestCase):
             mj.assert_has_calls([
                 call(['run-action', 'mysql/0', 'run', '--format', 'json']),
                 call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
+
+    @patch('amulet.deployer.juju')
+    def test_action_fetch_raise_on_timeout(self, mj):
+        mj.side_effect = ['{"Action queued with id": "some-action-id"}',
+                          '{"status":"running",'
+                          '"timing":{"enqueued":"2015-07-21 09:50:59 +0300 EEST",'
+                          '"started":"2015-07-21 09:51:04 +0300 EEST"}}']
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        with self.assertRaises(TimeoutError):
+            d.action_fetch(uuid, timeout=None, raise_on_timeout=True)
+
+    @patch('amulet.deployer.juju')
+    def test_action_fetch_full_output(self, mj):
+        action_output = ['{"Action queued with id": "some-action-id"}',
+                         '{"results":{"key":"value"},"status":"completed",'
+                         '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'
+                         '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'
+                         '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
+        mj.side_effect = action_output
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        results = d.action_fetch(uuid, full_output=True)
+        self.assertEquals(results, json.loads(action_output[1]))
 
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):

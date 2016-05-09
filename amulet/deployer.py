@@ -15,6 +15,7 @@ from .helpers import (
     juju,
     timeout as unit_timesout,
     JUJU_VERSION,
+    TimeoutError,
 )
 from .sentry import Talisman
 from .charm import CharmCache
@@ -582,14 +583,27 @@ class Deployment(object):
         results_id = action_result["Action queued with id"]
         return results_id
 
-    def action_fetch(self, action_id, timeout=600):
+    def action_fetch(
+            self, action_id, timeout=600, raise_on_timeout=False,
+            full_output=False):
         """Fetch results for an action.
 
         If the timeout expires and the action is still not complete, an
-        empty dictionary is returned.
+        empty dictionary is returned. To raise an exception instead, pass
+        ``raise_on_timeout=True``.
+
+        By default, only the 'results' dictionary of the action output is
+        returned. To get the full action output instead, pass
+        ``full_output=True``.
 
         :param action_id: UUID of the action.
         :param timeout: Length of time to wait for an action to complete.
+        :param raise_on_timeout: If True, :class:`amulet.helpers.TimeoutError`
+            will be raised if the action is still running when the timeout
+            expires.
+        :param full_output: If True, returns the full output from the action.
+            If False, only the 'results' dictionary from the action output is
+            returned.
         :return: Action results, as json.
 
         """
@@ -603,9 +617,19 @@ class Deployment(object):
         raw = juju(cmd)
         result = json.loads(raw)
         status = result['status']
+
+        if status == 'running' and raise_on_timeout:
+            raise TimeoutError(
+                'Action {} still running after {}s'.format(
+                    action_id, timeout))
+
+        if full_output:
+            return result
+
         if status == 'completed':
             if 'results' in result:
                 return result['results']
+
         return {}
 
     def setup(self, timeout=600, cleanup=True):
