@@ -546,7 +546,7 @@ class Deployment(object):
         :return: List of actions, as json.
 
         .. deprecated:: 1.15
-           Use :meth:`UnitSentry.list_actions instead.`
+           Use :meth:`amulet.sentry.UnitSentry.list_actions` instead.
 
         """
         warnings.warn(
@@ -570,7 +570,7 @@ class Deployment(object):
         :return str: The action UUID.
 
         .. deprecated:: 1.15
-           Use :meth:`UnitSentry.run_action instead.`
+           Use :meth:`amulet.sentry.UnitSentry.run_action` instead.
 
         """
         warnings.warn(

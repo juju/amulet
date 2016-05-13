@@ -197,6 +197,13 @@ we'll add some test methods to exercise and inspect the deployment.
         unittest.main()
 
 
+Environment Variables
+---------------------
+
+* `AMULET_SETUP_TIMEOUT` - overrides the timeout value passed to :meth:`~amulet.deployer.Deployment.setup`
+* `AMULET_WAIT_TIMEOUT` - overrides the timeout value passed to :meth:`~amulet.sentry.Talisman.wait` and :meth:`~amulet.sentry.Talisman.wait_for_status`
+
+
 Next Steps
 ----------
 
