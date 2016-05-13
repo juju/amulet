@@ -39,15 +39,17 @@ class TestDeployment(unittest.TestCase):
 
     def test_add_unit(self):
         self.deployment.add_unit('haproxy')
-        haproxy = self.deployment.sentry['haproxy/1']
-        self.assertEqual('1', haproxy.info['unit'])
-        self.assertEqual('haproxy/1', haproxy.info['unit_name'])
+        haproxy = self.deployment.sentry['haproxy'][1]
+        self.assertTrue(
+            int(haproxy.info['unit']) >
+            int(self.haproxy.info['unit']))
+        self.assertEqual('haproxy', haproxy.info['unit_name'].split('/')[0])
 
     def test_info(self):
         self.assertTrue('public-address' in self.nagios.info)
         self.assertEqual('nagios', self.nagios.info['service'])
-        self.assertEqual('0', self.nagios.info['unit'])
-        self.assertEqual('nagios/0', self.nagios.info['unit_name'])
+        self.assertTrue(int(self.nagios.info['unit']) >= 0)
+        self.assertEqual('nagios', self.nagios.info['unit_name'].split('/')[0])
 
     def test_file_stat(self):
         path = '/tmp/amulet-test/test-file'

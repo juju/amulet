@@ -94,6 +94,21 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
         self.assertEqual({'charm': {'charm': 'cs:precise/charm',
+                                    'series': 'precise',
+                                    'num_units': 1}}, d.services)
+
+    @patch('amulet.charm.CharmCache.get_charm')
+    def test_add_series(self, mcharm):
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location':
+                             'lp:~charmers/charms/precise/charm/trunk'}
+        charm.url = 'cs:precise/charm'
+
+        d = Deployment(juju_env='gojuju')
+        d.add('charm', series='precise')
+        self.assertEqual({'charm': {'charm': 'cs:precise/charm',
+                                    'series': 'precise',
                                     'num_units': 1}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -106,6 +121,7 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('bar', 'cs:~foo/baz')
         self.assertEqual({'bar': {'branch': 'lp:~foo/charms/precise/baz/trunk',
+                                  'series': 'precise',
                                   'num_units': 1}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -118,6 +134,7 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'series': 'precise',
                                     'num_units': 2}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -135,6 +152,7 @@ class DeployerTests(unittest.TestCase):
         ]))
 
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'series': 'precise',
                                     'constraints':
                                     'cpu-power=0 cpu-cores=4 mem=512M',
                                     'num_units': 2}}, d.services)
@@ -366,6 +384,7 @@ class DeployerTests(unittest.TestCase):
         d.configure('wordpress', {'wp-content': 'f', 'port': 100})
         self.assertEqual({'wordpress':
                           {'charm': 'cs:precise/wordpress',
+                           'series': 'precise',
                            'num_units': 1,
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
@@ -391,7 +410,8 @@ class DeployerTests(unittest.TestCase):
             {'wordpress':
                 {'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
                  'num_units': 1,
-                 'expose': True}}, d.services)
+                 'expose': True,
+                 'series': 'precise'}}, d.services)
 
     def test_expose_not_deployed(self):
         d = Deployment(juju_env='gojuju')
@@ -424,10 +444,12 @@ class DeployerTests(unittest.TestCase):
                     'branch': 'lp:~charmers/charms/precise/mysql/trunk',
                     'num_units': 1,
                     'options': {'tuning': 'fastest'},
+                    'series': 'precise',
                 },
                 'wordpress': {
                     'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
-                    'num_units': 1
+                    'num_units': 1,
+                    'series': 'precise',
                 }
             },
             'series': 'precise',

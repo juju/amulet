@@ -186,9 +186,10 @@ class Deployment(object):
             raise ValueError('Service is already set to be deployed')
 
         service = self.services[service_name] = {}
+        service['series'] = series or self.series
 
         charm = self.charm_cache.fetch(
-            service_name, charm, branch=branch, series=series or self.series)
+            service_name, charm, branch=branch, series=service['series'])
 
         if charm.subordinate:
             for rtype in ['provides', 'requires']:
