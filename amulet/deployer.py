@@ -5,12 +5,19 @@ import logging
 import os
 import shlex
 import subprocess
+import warnings
 import yaml
 
 from path import path
 from path import tempdir
 
-from .helpers import default_environment, juju, timeout as unit_timesout
+from . import actions
+from .helpers import (
+    default_environment,
+    juju,
+    timeout as unit_timesout,
+    JUJU_VERSION,
+)
 from .sentry import Talisman
 from .charm import CharmCache
 
@@ -32,10 +39,29 @@ def get_charm_name(dir_):
 
 
 class Deployment(object):
+    """A Juju workload.
+
+    Use this class to add, configure, relate, and deploy services to a
+    Juju environment.
+
+    :ivar Deployment.sentry: A :class:`amulet.sentry.Talisman` instance that
+        becomes available after a call to :meth:`setup` (before that,
+        :attr:`sentry` is ``None``.
+
+    """
     log = logger
 
     def __init__(self, juju_env=None, series='precise',
                  juju_deployer='juju-deployer', **kw):
+        """Initialize a deployment.
+
+        :param juju_env: Name of the Juju enviroment in which to deploy. If
+            None, the default environment is used.
+        :param series: The default series of charms to deploy.
+        :param juju_deployer: Path to juju_deployer binary to use for the
+            deployment.
+
+        """
         self.services = {}
         self.relations = []
         self.interfaces = []
@@ -55,17 +81,39 @@ class Deployment(object):
 
     @classmethod
     def from_bundle(cls, bundle_file, deployment_name=None):
+        """Create a :class:`Deployment` object from a bundle file.
+
+        :param bundle_file: Path to the bundle file.
+        :param deployment_name: Name of the deployment to use. Useful for
+            old-style bundle files that contain multiple named deployments.
+        :return: A new :class:`Deployment` object.
+
+        """
         deployment = cls()
         bundle_file = path(bundle_file)
         deployment.load_bundle_file(bundle_file, deployment_name)
         return deployment
 
     def load_bundle_file(self, bundle_file, deployment_name=None):
+        """Load a bundle file from disk.
+
+        :param bundle_file: Path to the bundle file.
+        :param deployment_name: Name of the deployment to use. Useful for
+            old-style bundle files that contain multiple named deployments.
+
+        """
         with open(bundle_file, 'r') as stream:
             contents = yaml.safe_load(stream)
         return self.load(contents, deployment_name)
 
     def load(self, deploy_cfg, deployment_name=None):
+        """Load an existing deployment schema (bundle) dictionary.
+
+        :param deploy_cfg: The bundle dictionary.
+        :param deployment_name: Name of the deployment to use. Useful for
+            old-style bundle files that contain multiple named deployments.
+
+        """
         if deployment_name is None and 'services' in deploy_cfg:
             # v4 format
             schema = deploy_cfg
@@ -106,7 +154,31 @@ class Deployment(object):
             branch=None,
             placement=None,
             series=None):
+        """Add a new service to the deployment schema.
 
+        :param service_name: Name of the service to deploy.
+        :param charm: Name of the charm to deploy for this service. If None,
+            defaults to ``service_name``.
+        :param units: Number of units to deploy.
+        :param constraints: Dictionary of service constraints.
+        :param branch: TODO
+        :param placement: Placement directive for this service. Examples:
+
+            "1" - Deploy to machine 1
+            "lxc:1" - Deploy to lxc container on machine 1
+            "lxc:wordpress/0 - Deploy to lxc container on first wordpress unit
+
+        :param series: Series of charm to deploy, e.g. precise, trusty, xenial
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('wordpress')
+            d.add('second-wp', charm='wordpress')
+            d.add('personal-wp', charm='~marcoceppi/wordpress', units=2)
+
+        """
         if self.deployed:
             raise NotImplementedError('Environment already setup')
 
@@ -114,9 +186,10 @@ class Deployment(object):
             raise ValueError('Service is already set to be deployed')
 
         service = self.services[service_name] = {}
+        service['series'] = series or self.series
 
         charm = self.charm_cache.fetch(
-            service_name, charm, branch=branch, series=series or self.series)
+            service_name, charm, branch=branch, series=service['series'])
 
         if charm.subordinate:
             for rtype in ['provides', 'requires']:
@@ -163,6 +236,27 @@ class Deployment(object):
         return service
 
     def add_unit(self, service, units=1, target=None, timeout=300):
+        """Add more units of an existing service after deployment.
+
+        :param service: Name of service to which units will be added.
+        :param units: Number of units to add.
+        :param target: Placement directive for the added unit(s).
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('wordpress')
+            try:
+                d.setup(timeout=900)
+            except amulet.helpers.TimeoutError:
+                # Setup didn't complete before timeout
+                pass
+            d.add_unit('wordpress')
+            d.add_unit('wordpresss', units=2)
+            d.add_unit('wordpresss', target="lxc:1")
+
+        """
         if not isinstance(units, int) or units < 1:
             raise ValueError('Only positive integers can be used for units')
         if target is not None and units != 1:
@@ -179,9 +273,16 @@ class Deployment(object):
             if target is not None:
                 args.extend(["--to", target])
             juju(args)
-            self.sentry = Talisman(self.services, timeout=timeout)
+            self.sentry = Talisman(
+                self.services, juju_env=self.juju_env, timeout=timeout)
 
     def remove_unit(self, *units):
+        """Remove (destroy) one or more already-deployed units.
+
+        :param units: One or more units in the form <service>/<unit_num>,
+            e.g. "wordpress/0", passed as \*args.
+
+        """
         if not self.deployed:
             raise NotImplementedError('Environment not setup yet')
         if not units:
@@ -204,6 +305,11 @@ class Deployment(object):
     destroy_unit = remove_unit
 
     def remove_service(self, *services):
+        """Remove (destroy) one or more already-deployed services.
+
+        :param services: One or more service names passed as \*args.
+
+        """
         if not services:
             raise ValueError('No services provided')
         for service in services:
@@ -220,6 +326,12 @@ class Deployment(object):
     destroy_service = remove_service
 
     def remove(self, *units_or_services):
+        """Remove (destroy) one or more already-deployed services or units.
+
+        :param units_or_services: One or more service or unit names passed
+            as \*args.
+
+        """
         if not units_or_services:
             raise ValueError('No units or services provided')
 
@@ -251,11 +363,35 @@ class Deployment(object):
                     break
 
     def relate(self, *args):
+        """Relate two or more services together.
+
+        If more than two arguments are given, the first service is related
+        to each of the others.
+
+        :param args: Services to relate, in the form
+            "service_name:relation_name".
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('postgresql')
+            d.add('mysql')
+            d.add('wordpress')
+            d.add('mediawiki')
+            d.add('discourse')
+            d.relate('postgresql:db-admin', 'discourse:db')
+            d.relate('mysql:db', 'wordpress:db', 'mediawiki:database')
+            # previous command is equivalent too:
+            d.relate('mysql:db', 'wordpress:db')
+            d.relate('mysql:db', 'mediawiki:database')
+
+        """
         if len(args) < 2:
             raise LookupError('Need at least two services:relation')
 
         for srv_rel in args:
-            if not ':' in srv_rel:
+            if ':' not in srv_rel:
                 raise ValueError('All relations must be explicit, ' +
                                  'service:relation')
 
@@ -280,11 +416,33 @@ class Deployment(object):
                 juju(['add-relation'] + [a, b])
 
     def unrelate(self, *args):
+        """Remove a relation between two services.
+
+        :param args: Services to unrelate, in the form
+            "service_name:relation_name".
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('postgresql')
+            d.add('mysql')
+            d.add('wordpress')
+            d.add('mediawiki')
+            d.add('discourse')
+            d.relate('postgresql:db-admin', 'discourse:db')
+            d.relate('mysql:db', 'wordpress:db', 'mediawiki:database')
+            # unrelate all the services we just related
+            d.unrelate('postgresql:db-admin', 'discourse:db')
+            d.unrelate('mysql:db', 'wordpress:db')
+            d.unrelate('mysql:db', 'mediawiki:database')
+
+        """
         if len(args) != 2:
             raise LookupError('Need exactly two service:relations')
 
         for srv_rel in args:
-            if not ':' in srv_rel:
+            if ':' not in srv_rel:
                 raise ValueError('All relations must be explicit, ' +
                                  'service:relation')
         relation = list(args)
@@ -300,9 +458,28 @@ class Deployment(object):
             juju(['remove-relation'] + relation)
 
     def schema(self):
-        return self.deployer_map(self.services, self.relations)
+        """Return the deployment schema (bundle) as a dictionary.
+
+        """
+        return self._deployer_map(self.services, self.relations)
 
     def configure(self, service, options):
+        """Change configuration options for a service (deployed or not).
+
+        :param service: Name of service to configure.
+        :param options: Dictionary of configuration settings.
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('postgresql')
+            d.configure('postgresql', {
+                'autovacuum': True,
+                'cluster_name': 'cname',
+            })
+
+        """
         for k, v in options.items():
             include_token = 'include-base64://'
             if type(v) is str and v.startswith(include_token):
@@ -312,7 +489,8 @@ class Deployment(object):
                 service['options'][k] = v
 
         if self.deployed:
-            opts = ['set', service]
+            juju_set_cmd = 'set' if JUJU_VERSION.major == 1 else 'set-config'
+            opts = [juju_set_cmd, service]
             for k, v in options.items():
                 opts.append("%s=%s" % (k, v))
             return juju(opts)
@@ -320,12 +498,27 @@ class Deployment(object):
         if service not in self.services:
             raise ValueError('Service has not yet been described')
 
-        if not 'options' in self.services[service]:
+        if 'options' not in self.services[service]:
             self.services[service]['options'] = options
         else:
             self.services[service]['options'].update(options)
 
     def expose(self, service):
+        """Expose a service.
+
+        If the service is already deployed it will be exposed immediately,
+        otherwise it will be exposed when deployed.
+
+        :param service: Name of the service to expose.
+
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('varnish')
+            d.expose('varnish')
+
+        """
         if self.deployed:
             return juju(['expose', service])
 
@@ -334,12 +527,12 @@ class Deployment(object):
         self.services[service]['expose'] = True
 
     @contextlib.contextmanager
-    def deploy_w_timeout(self, timeout):
-        """
-        :param timeout: Amount of time to wait for deployment to complete.
+    def _deploy_w_timeout(self, timeout):
+        """Sets timeout and tmp working directory for wrapped block.
 
-        Sets timeout and tmp working directory for wrapped block. If
-        successful, sets instance.deployed.
+        If successful, sets instance.deployed.
+
+        :param timeout: Amount of time to wait for deployment to complete.
 
         """
         deploy_dir = tempdir(prefix='amulet_deployment_')
@@ -348,60 +541,106 @@ class Deployment(object):
         self.deployed = True
 
     def action_defined(self, service):
-        """
-        :param service: Name of service to get list of defined actions for.
+        """Return list of actions defined for the service.
 
-        Returns the list of actions defined for the service.
+        :param service: Name of service for which to list actions.
+        :return: List of actions, as json.
+
+        .. deprecated:: 1.15
+           Use :meth:`amulet.sentry.UnitSentry.list_actions` instead.
+
         """
+        warnings.warn(
+            'Deployment.action_defined is deprecated, use '
+            'UnitSentry.list_actions instead.',
+            DeprecationWarning
+        )
+
         if service not in self.services:
             raise ValueError(
                 'Service needs to be added before listing actions.')
-        raw = juju(['action', 'defined', service, '--format', 'json'])
-        return json.loads(raw)
 
-    def action_do(self, unit, action, action_args={}):
-        """
-        :param unit: Unit to run action on.
-        :param action: Action to run.
-        :param action_args: Action parameters.
+        return actions.list_actions(service)
 
-        Runs specified action on specified unit and returns the uuid to fetch
-        results by.
+    def action_do(self, unit, action, action_args=None):
+        """Run action on a unit and return the result UUID.
+
+        :param unit: Unit on which to run action, e.g. "wordpress/0"
+        :param action: Name of action to run.
+        :param action_args: Dictionary of action parameters.
+        :return str: The action UUID.
+
+        .. deprecated:: 1.15
+           Use :meth:`amulet.sentry.UnitSentry.run_action` instead.
 
         """
-        if '/' not in unit:
-            raise ValueError('%s is not a unit' % unit)
-        cmd = ['action', 'do', unit, action, '--format', 'json']
-        for key, value in action_args.items():
-            cmd += ["%s=%s" % (str(key), str(value))]
-        result = juju(cmd)
-        action_result = json.loads(result)
-        results_id = action_result["Action queued with id"]
-        return results_id
+        warnings.warn(
+            'Deployment.action_do is deprecated, use '
+            'UnitSentry.run_action instead.',
+            DeprecationWarning
+        )
 
-    def action_fetch(self, action_id, timeout=600):
+        return actions.run_action(unit, action, action_args=action_args)
+
+    def action_fetch(
+            self, action_id, timeout=600, raise_on_timeout=False,
+            full_output=False):
+        """Fetch results for an action.
+
+        If the timeout expires and the action is still not complete, an
+        empty dictionary is returned. To raise an exception instead, pass
+        ``raise_on_timeout=True``.
+
+        By default, only the 'results' dictionary of the action output is
+        returned. To get the full action output instead, pass
+        ``full_output=True``.
+
+        :param action_id: UUID of the action.
+        :param timeout: Length of time to wait for an action to complete.
+        :param raise_on_timeout: If True, :class:`amulet.helpers.TimeoutError`
+            will be raised if the action is still running when the timeout
+            expires.
+        :param full_output: If True, returns the full output from the action.
+            If False, only the 'results' dictionary from the action output is
+            returned.
+        :return: Action results, as json.
+
         """
-        :param action_id: Id of the action to fetch results for.
-        """
-        cmd = ['action', 'fetch', action_id, '--format', 'json']
-        if timeout is not None:
-            cmd += ["--wait", str(timeout)]
-        raw = juju(cmd)
-        result = json.loads(raw)
-        status = result['status']
-        if status == 'completed':
-            if 'results' in result:
-                return result['results']
-        return {}
+        return actions.get_action_output(
+            action_id, timeout=timeout, raise_on_timeout=raise_on_timeout,
+            full_output=full_output
+        )
+    get_action_output = action_fetch
 
     def setup(self, timeout=600, cleanup=True):
         """Deploy the workload.
 
+        If timeout expires before the deployment completes, raises
+            :class:`amulet.helpers.TimeoutError`.
+
         :param timeout: Amount of time to wait for deployment to complete.
+            If environment variable AMULET_SETUP_TIMEOUT is set, it overrides
+            this value.
         :param cleanup: Set to False to leave the generated deployer file
             on disk. Useful for debugging.
 
+        Example::
+
+            import amulet
+            d = amulet.Deployment()
+            d.add('wordpress')
+            d.add('mysql')
+            d.configure('wordpress', debug=True)
+            d.relate('wordpress:db', 'mysql:db')
+            try:
+                d.setup(timeout=900)
+            except amulet.helpers.TimeoutError:
+                # Setup didn't complete before timeout
+                pass
+
         """
+        timeout = int(os.environ.get('AMULET_SETUP_TIMEOUT') or timeout)
+
         if not self.deployer:
             raise NameError('Path to juju-deployer is not defined.')
 
@@ -426,26 +665,25 @@ class Deployment(object):
             cmd = cmd.format(**cmd_args)
             self.log.debug(cmd)
 
-            with self.deploy_w_timeout(timeout):
+            with self._deploy_w_timeout(timeout):
                 subprocess.check_call(shlex.split(cmd))
 
-        self.sentry = Talisman(self.services, timeout=timeout)
+        self.sentry = Talisman(
+            self.services, timeout=timeout, juju_env=self.juju_env)
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)
 
-    def deployer_map(self, services, relations):
-        deployer_map = {
+    def _deployer_map(self, services, relations):
+        return {
             self.juju_env: {
                 'series': self.series,
                 'services': self.services,
-                'relations': self.build_relations()
+                'relations': self._build_relations()
             }
         }
 
-        return deployer_map
-
-    def build_relations(self):
+    def _build_relations(self):
         relations = []
         for rel in self.relations:
             relations.append(rel)

@@ -10,6 +10,7 @@ import yaml
 from amulet import Deployment
 from amulet.deployer import get_charm_name
 from amulet.sentry import UnitSentry
+from amulet.helpers import JUJU_VERSION, TimeoutError
 from mock import patch, MagicMock, call
 from collections import OrderedDict
 
@@ -93,6 +94,21 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm')
         self.assertEqual({'charm': {'charm': 'cs:precise/charm',
+                                    'series': 'precise',
+                                    'num_units': 1}}, d.services)
+
+    @patch('amulet.charm.CharmCache.get_charm')
+    def test_add_series(self, mcharm):
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location':
+                             'lp:~charmers/charms/precise/charm/trunk'}
+        charm.url = 'cs:precise/charm'
+
+        d = Deployment(juju_env='gojuju')
+        d.add('charm', series='precise')
+        self.assertEqual({'charm': {'charm': 'cs:precise/charm',
+                                    'series': 'precise',
                                     'num_units': 1}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -105,6 +121,7 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('bar', 'cs:~foo/baz')
         self.assertEqual({'bar': {'branch': 'lp:~foo/charms/precise/baz/trunk',
+                                  'series': 'precise',
                                   'num_units': 1}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -117,6 +134,7 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         d.add('charm', units=2)
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'series': 'precise',
                                     'num_units': 2}}, d.services)
 
     @patch('amulet.charm.CharmCache.get_charm')
@@ -134,6 +152,7 @@ class DeployerTests(unittest.TestCase):
         ]))
 
         self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'series': 'precise',
                                     'constraints':
                                     'cpu-power=0 cpu-cores=4 mem=512M',
                                     'num_units': 2}}, d.services)
@@ -152,7 +171,8 @@ class DeployerTests(unittest.TestCase):
                         'public-address': '10.0.3.{}'.format(total_units),
                         'machine': str(total_units)}
                     status['machines'][str(total_units)] = {
-                        'agent-state': 'started',
+                        'agent-state': 'started',  # juju1
+                        'juju-status': {'current': 'started'},  # juju2+
                     }
             status['services']['relation-sentry'] = {
                 'units': {
@@ -161,7 +181,8 @@ class DeployerTests(unittest.TestCase):
                         'public-address': '10.0.3.1',
                         'machine': str(total_units+1)}}}
             status['machines'][str(total_units+1)] = {
-                'agent-state': 'started',
+                'agent-state': 'started',  # juju1
+                'juju-status': {'current': 'started'},  # juju2+
             }
             return status
         return _mock_status
@@ -363,6 +384,7 @@ class DeployerTests(unittest.TestCase):
         d.configure('wordpress', {'wp-content': 'f', 'port': 100})
         self.assertEqual({'wordpress':
                           {'charm': 'cs:precise/wordpress',
+                           'series': 'precise',
                            'num_units': 1,
                            'options': {'tuning': 'optimized',
                                        'wp-content': 'f',
@@ -388,7 +410,8 @@ class DeployerTests(unittest.TestCase):
             {'wordpress':
                 {'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
                  'num_units': 1,
-                 'expose': True}}, d.services)
+                 'expose': True,
+                 'series': 'precise'}}, d.services)
 
     def test_expose_not_deployed(self):
         d = Deployment(juju_env='gojuju')
@@ -421,10 +444,12 @@ class DeployerTests(unittest.TestCase):
                     'branch': 'lp:~charmers/charms/precise/mysql/trunk',
                     'num_units': 1,
                     'options': {'tuning': 'fastest'},
+                    'series': 'precise',
                 },
                 'wordpress': {
                     'branch': 'lp:~charmers/charms/precise/wordpress/trunk',
-                    'num_units': 1
+                    'num_units': 1,
+                    'series': 'precise',
                 }
             },
             'series': 'precise',
@@ -467,25 +492,35 @@ class DeployerTests(unittest.TestCase):
             self.assertEqual(
                 str(e), 'All relations must be explicit, service:relation')
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_defined(self, mj):
         mj.return_value = '{"action": "description"}'
         d = Deployment(juju_env='gojuju')
         d.add('mysql')
         actions = d.action_defined('mysql')
         self.assertEquals(actions, {"action": "description"})
-        mj.assert_has_calls([call(['action', 'defined', 'mysql', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'defined', 'mysql', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['list-actions', 'mysql', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_do(self, mj):
         mj.return_value = '{"Action queued with id": "some-action-id"}'
         d = Deployment(juju_env='gojuju')
         d.add('mysql')
         uuid = d.action_do('mysql/0', 'run')
         self.assertEquals(uuid, "some-action-id")
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"results":{"key":"value"},"status":"completed",'
@@ -498,10 +533,16 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid)
         self.assertEquals(results, {'key': 'value'})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
-                            call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json', 'action_param=action_value']),
+                call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_nowait_fail(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"status":"running",'
@@ -513,10 +554,16 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid, timeout=None)
         self.assertEquals(results, {})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
-                             call(['action', 'fetch', 'some-action-id', '--format', 'json'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json']),
+                call(['show-action-output', 'some-action-id', '--format', 'json'])])
 
-    @patch('amulet.deployer.juju')
+    @patch('amulet.actions.juju')
     def test_action_fetch_wait(self, mj):
         mj.side_effect = ['{"Action queued with id": "some-action-id"}',
                           '{"results":{"key":"value"},"status":"completed",'
@@ -529,8 +576,40 @@ class DeployerTests(unittest.TestCase):
         self.assertEquals(uuid, "some-action-id")
         results = d.action_fetch(uuid)
         self.assertEquals(results, {'key': 'value'})
-        mj.assert_has_calls([call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
-                             call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        if JUJU_VERSION.major == 1:
+            mj.assert_has_calls([
+                call(['action', 'do', 'mysql/0', 'run', '--format', 'json']),
+                call(['action', 'fetch', 'some-action-id', '--format', 'json', '--wait', '600'])])
+        else:
+            mj.assert_has_calls([
+                call(['run-action', 'mysql/0', 'run', '--format', 'json']),
+                call(['show-action-output', 'some-action-id', '--format', 'json', '--wait', '600'])])
+
+    @patch('amulet.actions.juju')
+    def test_action_fetch_raise_on_timeout(self, mj):
+        mj.side_effect = ['{"Action queued with id": "some-action-id"}',
+                          '{"status":"running",'
+                          '"timing":{"enqueued":"2015-07-21 09:50:59 +0300 EEST",'
+                          '"started":"2015-07-21 09:51:04 +0300 EEST"}}']
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        with self.assertRaises(TimeoutError):
+            d.action_fetch(uuid, timeout=None, raise_on_timeout=True)
+
+    @patch('amulet.actions.juju')
+    def test_action_fetch_full_output(self, mj):
+        action_output = ['{"Action queued with id": "some-action-id"}',
+                         '{"results":{"key":"value"},"status":"completed",'
+                         '"timing":{"completed":"2015-07-21 09:05:11 +0300 EEST",'
+                         '"enqueued":"2015-07-21 09:05:06 +0300 EEST",'
+                         '"started":"2015-07-21 09:05:09 +0300 EEST"}}']
+        mj.side_effect = action_output
+        d = Deployment(juju_env='gojuju')
+        d.add('mysql')
+        uuid = d.action_do('mysql/0', 'run')
+        results = d.action_fetch(uuid, full_output=True)
+        self.assertEquals(results, json.loads(action_output[1]))
 
     @patch('amulet.deployer.juju')
     def test_unrelate(self, mj):

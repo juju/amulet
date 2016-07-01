@@ -10,6 +10,7 @@ from .helpers import (
 )
 
 SUCCESS_STATES = ['started']
+JUJU_VERSION = JujuVersion()
 
 
 def wait(*args, **kwargs):
@@ -29,11 +30,11 @@ def wait(*args, **kwargs):
     """
     import os
 
-    if not 'juju_env' in kwargs:
+    if 'juju_env' not in kwargs:
         kwargs['juju_env'] = \
             os.environ.get('JUJU_ENV') or default_environment()
 
-    if not 'timeout' in kwargs:
+    if 'timeout' not in kwargs:
         kwargs['timeout'] = 300
 
     for i in timeout_gen(kwargs['timeout']):
@@ -67,7 +68,10 @@ def _get_gojuju_status(environment=None):
 def _get_pyjuju_status(environment=None):
     cmd = ['status', '--format', 'yaml']
     if environment:
-        cmd.extend(['-e', environment])
+        if JUJU_VERSION.major == 1:
+            cmd.extend(['-e', environment])
+        else:
+            cmd.extend(['-m', environment])
 
     try:
         status_yml = juju(cmd)
@@ -87,13 +91,11 @@ def get_state(data):
 
 
 def status(juju_env=None):
-    version = JujuVersion()
-
     if not juju_env:
         raise KeyError('No juju_env set')
 
     try:
-        if version.major == 0:
+        if JUJU_VERSION.major == 0:
             juju_status = _get_pyjuju_status(juju_env)
         else:
             juju_status = _get_gojuju_status(juju_env)
@@ -108,7 +110,7 @@ def status(juju_env=None):
 def state(*args, **kwargs):
     output = {}
 
-    if not 'juju_env' in kwargs:
+    if 'juju_env' not in kwargs:
         raise KeyError('No juju_env set')
 
     juju_env = kwargs['juju_env']
@@ -125,13 +127,13 @@ def state(*args, **kwargs):
 
     for arg in args:
         service, unit = arg.split('/') if '/' in arg else [arg, None]
-        if not service in juju_status['services']:
+        if service not in juju_status['services']:
             raise ValueError('%s is not in the deployment yet' % arg)
 
-        if not service in output:
+        if service not in output:
             output[service] = {}
 
-        if not 'units' in juju_status['services'][service]:
+        if 'units' not in juju_status['services'][service]:
             # Probably a subordinate
             if 'subordinate-to' in juju_status['services'][service]:
                 del output[service]

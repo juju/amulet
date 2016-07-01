@@ -1,3 +1,4 @@
+import gc
 import glob
 import json
 import logging
@@ -7,8 +8,11 @@ from datetime import datetime
 
 import pkg_resources
 
+from . import actions
 from . import waiter
 from . import helpers
+
+JUJU_VERSION = helpers.JUJU_VERSION
 
 
 # number of seconds an agent must be idle to be considered quiescent
@@ -52,6 +56,18 @@ class Sentry(object):
 
 
 class UnitSentry(Sentry):
+    """A proxy to a deployed unit, through which the unit can be
+    manipulated.
+
+    Provides methods for running commands on the unit and fetching
+    relation data from units to which this unit is related.
+
+    :ivar dict info: A dictionary containing 'unit_name' (in the form
+        'wordpress/0'), 'service' (name), 'unit' (unit number as string),
+        'machine' (machine number as string), 'public-address', and
+        'agent-version'.
+
+    """
     @classmethod
     def fromunit(cls, unit):
         pass
@@ -66,11 +82,37 @@ class UnitSentry(Sentry):
         unitsentry.upload_scripts()
         return unitsentry
 
+    def list_actions(self):
+        """Return list of actions defined for this unit.
+
+        :return: List of actions, as json.
+
+        """
+        return actions.list_actions(self.info['service'])
+    action_defined = list_actions
+
+    def run_action(self, action, action_args=None):
+        """Run an action on this unit and return the result UUID.
+
+        :param action: Name of action to run.
+        :param action_args: Dictionary of action parameters.
+        :return str: The action UUID.
+
+        """
+        return actions.run_action(
+            self.info['unit_name'], action, action_args=action_args)
+    action_do = run_action
+
     def upload_scripts(self):
         source = pkg_resources.resource_filename(
             'amulet', os.path.join('unit-scripts', 'amulet'))
         dest = '/tmp/amulet'
-        output, code = self.ssh('mkdir -p -m a=rwx {}'.format(dest), raise_on_failure=True)
+        mkdir_cmd = 'mkdir -p -m a=rwx {}'.format(dest)
+        output, code = self.ssh(mkdir_cmd, raise_on_failure=False)
+        if code != 0:
+            # try one more time
+            self.ssh(mkdir_cmd, raise_on_failure=True)
+
         # copy one at a time b/c `juju scp -r` doesn't work (currently)
         for f in glob.glob(os.path.join(source, '*.py')):
             cmd = "juju scp {} {}:{}".format(
@@ -82,9 +124,23 @@ class UnitSentry(Sentry):
         return self._run_unit_script("filesystem_data.py {}".format(path))
 
     def file_stat(self, filename):
+        """Run :func:`os.stat` against ``filename`` on the unit.
+
+        :param str filename: Path of file to stat on the remote unit.
+        :return: Dictionary containing ``mtime``, ``size``, ``uid``,
+            ``gid``, and ``mode`` of ``filename``.
+
+        """
         return self._fs_data(filename)
 
     def file_contents(self, filename):
+        """Get the contents of ``filename`` on the remote unit.
+
+        :param str filename: Path of file to stat on the remote unit.
+        :raises: IOError if the call fails.
+        :return: File contents as string.
+
+        """
         output, return_code = self._run('cat {}'.format(filename))
         if return_code == 0:
             return output
@@ -92,21 +148,69 @@ class UnitSentry(Sentry):
             raise IOError(output)
 
     def directory_stat(self, path):
+        """Run :func:`os.stat` against ``path`` on the unit.
+
+        :param str path: Path of directory to stat on the remote unit.
+        :return: Dictionary containing ``mtime``, ``size``, ``uid``,
+            ``gid``, and ``mode`` of ``path``.
+
+        """
         return self._fs_data(path)
 
     def directory_listing(self, path):
+        """Get the contents of the directory at ``path`` on the remote unit.
+
+        :param str path: Path of directory on the remote unit.
+        :return: Dictionary containing 'files' and 'directories', both lists.
+
+        This method does the equivalent of the following, on the remote unit::
+
+            contents = {'files': [], 'directories': []}
+            for fd in os.listdir(path):
+                if os.path.isfile('{}/{}'.format(path, fd)):
+                    contents['files'].append(fd)
+                else:
+                    contents['directories'].append(fd)
+            return contents
+
+        """
         return self._run_unit_script("directory_listing.py {}".format(path))
 
     def run(self, command):
+        """Run an arbitrary command (as root) on the remote unit.
+
+        Uses ``juju run`` to execute the command, which means the command
+        will be queued to run after already-queued hooks. To avoid this
+        behavior and instead execute the command immediately, see the
+        :meth:`ssh` method.
+
+        :param str command: The command to run.
+        :return: A 2-tuple containing the output of the command and the exit
+            code of the command.
+
+        A default timeout of 5 minutes is imposed on the command. To change
+        this timeout, see the :meth:`_run` method.
+
+        """
         output, code = self._run(command)
         return output.strip(), code
 
     def _run(self, command, unit=None, timeout=300):
-        """
-        Run a command against an individual unit.
+        """Run an arbitrary command (as root) on the remote unit.
 
-        The timeout defaults to 5m to match the `juju run` command, but can
-        be increased to wait for other running hook contexts to complete.
+        Uses ``juju run`` to execute the command, which means the command
+        will be queued to run after already-queued hooks. To avoid this
+        behavior and instead execute the command immediately, see the
+        :meth:`ssh` method.
+
+        :param str command: The command to run.
+        :param str unit: Unit on which to run the command, in the form
+            'wordpress/0'. If None, defaults to the unit for this
+            :class:`UnitSentry`.
+        :param int timeout: Seconds to wait before timing out.
+        :return: A 2-tuple containing the output of the command and the exit
+            code of the command.
+
         """
         unit = unit or self.info['unit_name']
         cmd = [
@@ -125,15 +229,25 @@ class UnitSentry(Sentry):
         return output.decode('utf8'), p.returncode
 
     def ssh(self, command, unit=None, raise_on_failure=False):
-        """
-        Run a command against an individual unit, using `juju ssh`.
+        """Run an arbitrary command (as the ubuntu user) against a remote
+        unit, using `juju ssh`.
 
         Using `juju ssh` bypasses the Juju execution queue, so it will not
         be blocked by running hooks.  Note, however, that the command is run
         as the ubuntu user instead of root.
+
+        :param str command: The command to run.
+        :param str unit: Unit on which to run the command, in the form
+            'wordpress/0'. If None, defaults to the unit for this
+            :class:`UnitSentry`.
+        :param bool raise_on_failure: If True, raises
+            :class:`subprocess.CalledProcessError` if the command fails.
+        :return: A 2-tuple containing the output of the command and the exit
+            code of the command.
+
         """
         unit = unit or self.info['unit_name']
-        cmd = ['juju', 'ssh', unit, command]
+        cmd = ['juju', 'ssh', unit, '-v', command]
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -141,8 +255,10 @@ class UnitSentry(Sentry):
         )
         stdout, stderr = p.communicate()
         output = stdout if p.returncode == 0 else stderr
-        if raise_on_failure and p.returncode != 0:
-            raise subprocess.CalledProcessError(p.returncode, cmd, output)
+        if p.returncode != 0:
+            print(output)
+            if raise_on_failure:
+                raise subprocess.CalledProcessError(p.returncode, cmd, output)
         return output.decode('utf8').strip(), p.returncode
 
     def _run_unit_script(self, cmd, working_dir=None):
@@ -164,6 +280,16 @@ class UnitSentry(Sentry):
         return self._run_unit_script("juju_agent.py", working_dir=".")
 
     def relation(self, from_rel, to_rel):
+        """Get relation data from the remote unit to which we are related,
+        denoted by ``to_rel``.
+
+        :param str from_rel: The local side of the relation, e.g. 'website'.
+        :param str to_rel: The remote side of the relation,
+            e.g. 'haproxy:reverseproxy'.
+        :return: Dictionary containing the results of `relation-get`, run
+            on the unit on the remote side of the relation.
+
+        """
         this_unit = '{service}/{unit}'.format(**self.info)
         to_service, to_relation = to_rel.split(':')
         r_ids, _ = self._run('relation-ids {}'.format(from_rel))
@@ -190,22 +316,40 @@ class UnitSentry(Sentry):
         raise Exception('Relationship not found')
 
 
-# Possibly use to build out instead of having code in setup()?
 class Talisman(object):
-    def __init__(self, services, rel_sentry='relation-sentry', juju_env=None, timeout=300):
+    """A dict-like object containing a collection of :class:`UnitSentry`
+    objects, one for each unit in the deployment.
+
+    Also provides assorted 'wait\_' methods which will block until the
+    deployment reaches a certain state.
+
+    See :meth:`__getitem__` for details on retrieving the :class:`UnitSentry`
+    objects.
+
+    :note: Under ordinary circumstances this class should not be instantiated
+        manually. It should instead be access through the
+        :attr:`~amulet.deployer.Deployment.sentry` attribute on an
+        :class:`amulet.deployer.Deployment` instance.
+
+    """
+
+    def __init__(self, services, rel_sentry='relation-sentry',
+                 juju_env=None, timeout=300):
         self.service_names = services
         self.unit = {}
         self.service = {}
 
         self.juju_env = juju_env or helpers.default_environment()
 
-        status = self.wait_for_status(self.juju_env, services, timeout)
+        # Save the juju status so we can inspect it later if we don't
+        # end up with what we expect in our dictionary of sentries.
+        self.status = self.wait_for_status(self.juju_env, services, timeout)
 
         for service in services:
-            if service not in status['services']:
+            if service not in self.status['services']:
                 continue  # Raise something?
 
-            service_status = status['services'][service]
+            service_status = self.status['services'][service]
 
             if 'units' not in service_status:
                 continue
@@ -266,17 +410,24 @@ class Talisman(object):
                     if service == unit_name.split('/', 1)[0]]
 
     def get_status(self, juju_env=None):
-        """
-        Get status of all units, normalized
-        to make it a bit easier to work with.
-        """
         status = waiter.status(juju_env or self.juju_env)
         machine_states = {}
         normalized = {}
+
+        def machine_state(machine_dict):
+            if JUJU_VERSION.major == 1:
+                return machine_dict.get('agent-state')
+            return machine_dict.get('juju-status', {}).get('current')
+
+        def agent_status(unit_dict):
+            key = 'agent-status' if JUJU_VERSION.major == 1 else 'juju-status'
+            return unit_dict.get(key, {})
+
         for number, machine in status['machines'].items():
-            machine_states[number] = machine.get('agent-state')
+            machine_states[number] = machine_state(machine)
             for container_name, container in machine.get('containers', {}).items():
-                machine_states[container_name] = container.get('agent-state')
+                machine_states[container_name] = machine_state(container)
+
         for service_name, service in status['services'].items():
             if 'units' not in service and 'relations' not in service:
                 # ignore unrelated subordinates; they will never become ready
@@ -287,7 +438,7 @@ class Talisman(object):
                     'machine-state': machine_states.get(unit.get('machine')),
                     'public-address': unit.get('public-address'),
                     'workload-status': unit.get('workload-status', {}),
-                    'agent-status': unit.get('agent-status', {}),
+                    'agent-status': agent_status(unit),
                     'agent-state': unit.get('agent-state'),
                     'agent-state-info': unit.get('agent-state-info'),
                 }
@@ -298,26 +449,34 @@ class Talisman(object):
                         'machine-state': machine_states.get(unit.get('machine')),
                         'public-address': sub.get('public-address'),
                         'workload-status': sub.get('workload-status', {}),
-                        'agent-status': sub.get('agent-status', {}),
+                        'agent-status': agent_status(sub),
                         'agent-state': sub.get('agent-state'),
                         'agent-state-info': sub.get('agent-state-info'),
                     }
         return normalized
 
     def wait_for_status(self, juju_env, services, timeout=300):
-        """Return env status, but only after all units have a
+        """Return environment status, but only after all units have a
         public-address assigned and are in a 'started' state.
 
-        Some substrates (like Amazon) will return a public-address while the
-        machine is still allocating, so it's necessary to also check the
-        agent-state to see if the unit is ready.
+        This method is called automatically by :meth:`__init__`, meaning that
+        initialization of this :class:`Talisman` object will not complete
+        until this method returns. Under ordinary circumstances you should
+        not need to call this method manually.
 
         Raises if a unit reaches error state, or if public-address not
         available for all units before timeout expires.
 
+        :param str juju_env: Name of the juju environment.
+        :param dict services: Dictionary of services in the environment.
+        :param int timeout: Time to wait before timing out. If environment
+            variable AMULET_WAIT_TIMEOUT is set, it overrides this value.
+        :return: Dictionary of juju enviroment status.
+
         """
-        def check_status(juju_env, services):
-            status = self.get_status(juju_env)
+        timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
+
+        def check_status(status, juju_env, services):
             for service_name in services:
                 if service_name not in status:
                     # ignore unrelated subordinates; they will never become ready
@@ -334,25 +493,33 @@ class Talisman(object):
                         return False
                     if not unit['public-address']:
                         return False
+                    # Some substrates (like Amazon) will return a
+                    # public-address while the machine is still allocating, so
+                    # it's necessary to also check the agent-state to see if
+                    # the unit is ready.
                     if unit['agent-state'] not in (None, 'started'):
                         return False
             return True
 
         for i in helpers.timeout_gen(timeout):
-            if check_status(juju_env, services):
+            status = self.get_status(juju_env)
+            if check_status(status, juju_env, services):
                 return waiter.status(juju_env)
+            del status
+            gc.collect()
 
     def wait(self, timeout=300):
-        """
-        wait_for_status, called by __init__, blocks until units are in a
-        started state. Here we wait for a unit to finish any running hooks.
-        When the unit is done, juju_agent will return {}. Otherwise, it returns
-        a dict with the name of the running hook.
+        """Wait for all units to finish running hooks.
 
-        Raises an error if the timeout is exceeded.
+        :param int timeout: Number of seconds to wait before timing-out.
+            If environment variable AMULET_WAIT_TIMEOUT is set, it overrides
+            this value.
+        :raises: :class:`amulet.TimeoutError` if the timeout is exceeded.
+
         """
-        def check_status():
-            status = self.get_status()
+        timeout = int(os.environ.get('AMULET_WAIT_TIMEOUT') or timeout)
+
+        def check_status(status):
             for service_name in self.service_names:
                 service = status.get(service_name, {})
                 for unit_name, unit in service.items():
@@ -372,17 +539,19 @@ class Talisman(object):
                  timeout)
         start = datetime.now()
         for i in helpers.timeout_gen(timeout):
-            if check_status():
+            status = self.get_status()
+            if check_status(status):
                 log.info('Deployment settled in %s seconds.',
                          (datetime.now() - start).total_seconds())
                 return
+            del status
+            gc.collect()
 
     def wait_for_messages(self, messages, timeout=300):
-        """
-        Wait for specific extended status messages to be set via status-set.
+        """Wait for specific extended status messages to be set via status-set.
 
         Note that if this is called on an environment that doesn't support
-        extended status (pre Juju 1.24), it will raise a
+        extended status (pre Juju 1.24), it will raise an
         :class:`~amulet.helpers.UnsupportedError` exception.
 
         :param dict messages: A mapping of services to an exact message,
@@ -415,6 +584,7 @@ class Talisman(object):
             # wait for one unit to report "ready" and the other to report "ok"
             # (must be exactly two units)
             t.wait_for_messages({'ubuntu': ['ready', 'ok']})
+
         """
         def get_messages(service, status):
             messages = []
@@ -433,6 +603,8 @@ class Talisman(object):
                     break
             else:
                 return
+            del status
+            gc.collect()
 
     def _sync(self):
         pass
@@ -480,9 +652,10 @@ class StatusMessageMatcher(object):
         """
         Check a list of strings or regexps against a list of messages.
 
-        Each expected string or regexp must match once, and all messages must be matched.
-        If an expected string or regexp matches multiple messages, longer matches are
-        preferred, to resolve the ambiguity.
+        Each expected string or regexp must match once, and all messages must
+        be matched.  If an expected string or regexp matches multiple messages,
+        longer matches are preferred, to resolve the ambiguity.
+
         """
         if len(actual) != len(expected):
             return False
@@ -504,7 +677,9 @@ class StatusMessageMatcher(object):
         """
         Check a single string or regexp against a single message.
 
-        Returns the length of the match (0 for no match), to allow for preferring longer matches.
+        Returns the length of the match (0 for no match), to allow for
+        preferring longer matches.
+
         """
         if hasattr(expected, 'search'):
             m = expected.search(actual)

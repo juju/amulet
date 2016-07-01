@@ -10,10 +10,11 @@ class TestDeployment(unittest.TestCase):
         cls.deployment = amulet.Deployment(series='precise')
 
         cls.deployment.add('nagios')
-        cls.deployment.add('haproxy')
+        cls.deployment.add('haproxy', charm='cs:~marcoceppi/precise/haproxy-0')
         cls.deployment.add('rsyslog-forwarder')
         cls.deployment.relate('nagios:website', 'haproxy:reverseproxy')
-        cls.deployment.relate('nagios:juju-info', 'rsyslog-forwarder:juju-info')
+        cls.deployment.relate(
+            'nagios:juju-info', 'rsyslog-forwarder:juju-info')
 
         try:
             cls.deployment.setup(timeout=900)
@@ -24,9 +25,9 @@ class TestDeployment(unittest.TestCase):
         except:
             raise
 
-        cls.nagios = cls.deployment.sentry['nagios/0']
-        cls.haproxy = cls.deployment.sentry['haproxy/0']
-        cls.rsyslogfwd = cls.deployment.sentry['rsyslog-forwarder/0']
+        cls.nagios = cls.deployment.sentry['nagios'][0]
+        cls.haproxy = cls.deployment.sentry['haproxy'][0]
+        cls.rsyslogfwd = cls.deployment.sentry['rsyslog-forwarder'][0]
         cls.nagios.run(
             'sudo mkdir -p /tmp/amulet-test/test-dir;'
             'sudo chmod go-rx /tmp/amulet-test;'
@@ -38,15 +39,17 @@ class TestDeployment(unittest.TestCase):
 
     def test_add_unit(self):
         self.deployment.add_unit('haproxy')
-        haproxy = self.deployment.sentry['haproxy/1']
-        self.assertEqual('1', haproxy.info['unit'])
-        self.assertEqual('haproxy/1', haproxy.info['unit_name'])
+        haproxy = self.deployment.sentry['haproxy'][1]
+        self.assertTrue(
+            int(haproxy.info['unit']) >
+            int(self.haproxy.info['unit']))
+        self.assertEqual('haproxy', haproxy.info['unit_name'].split('/')[0])
 
     def test_info(self):
         self.assertTrue('public-address' in self.nagios.info)
         self.assertEqual('nagios', self.nagios.info['service'])
-        self.assertEqual('0', self.nagios.info['unit'])
-        self.assertEqual('nagios/0', self.nagios.info['unit_name'])
+        self.assertTrue(int(self.nagios.info['unit']) >= 0)
+        self.assertEqual('nagios', self.nagios.info['unit_name'].split('/')[0])
 
     def test_file_stat(self):
         path = '/tmp/amulet-test/test-file'
@@ -77,7 +80,8 @@ class TestDeployment(unittest.TestCase):
             self.rsyslogfwd.file_contents(path),
             'more-contents\n',
         )
-        self.assertIn('rsyslog', self.rsyslogfwd.file_contents('metadata.yaml'))
+        self.assertIn(
+            'rsyslog', self.rsyslogfwd.file_contents('metadata.yaml'))
 
     def test_directory_stat(self):
         path = '/tmp/amulet-test'
@@ -108,7 +112,8 @@ class TestDeployment(unittest.TestCase):
                 'directories': ['test-dir'],
             },
         )
-        self.assertIn('install', self.nagios.directory_listing('hooks')['files'])
+        self.assertIn(
+            'install', self.nagios.directory_listing('hooks')['files'])
 
     def test_relation(self):
         nagios_info = self.nagios.relation(
