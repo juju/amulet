@@ -80,7 +80,10 @@ def _get_pyjuju_status(environment=None):
     except:
         raise Exception('Unable to query status for %s' % environment)
 
-    return yaml.safe_load(status_yml)
+    d = yaml.safe_load(status_yml)
+    if 'applications' in d:
+        d['services'] = d['applications']
+    return d
 
 
 def get_state(data):

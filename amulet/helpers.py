@@ -104,7 +104,7 @@ def timeout_gen(seconds):
         yield i
         if (datetime.now() - start).total_seconds() > seconds:
             sys.stderr.write('Timeout occurred, printing juju status...')
-            sys.stderr.write(juju(['status']))
+            sys.stderr.write(juju(['status', '--format', 'yaml']))
             raise TimeoutError()
         i += 1
 
@@ -113,7 +113,7 @@ def timeout_gen(seconds):
 def timeout(seconds):
     def signal_handler(signum, frame):
         sys.stderr.write('Timeout occurred, printing juju status...')
-        sys.stderr.write(juju(['status']))
+        sys.stderr.write(juju(['status', '--format', 'yaml']))
         raise TimeoutError()
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
