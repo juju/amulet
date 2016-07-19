@@ -103,7 +103,8 @@ def timeout_gen(seconds):
     while True:
         yield i
         if (datetime.now() - start).total_seconds() > seconds:
-            sys.stderr.write('Timeout occurred, printing juju status...')
+            sys.stderr.write('Timeout occurred ({}s), '
+                             'printing juju status...'.format(seconds))
             sys.stderr.write(juju(['status', '--format', 'yaml']))
             raise TimeoutError()
         i += 1
