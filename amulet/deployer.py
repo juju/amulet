@@ -235,7 +235,7 @@ class Deployment(object):
 
         return service
 
-    def add_unit(self, service, units=1, target=None):
+    def add_unit(self, service, units=1, target=None, timeout=300):
         """Add more units of an existing service after deployment.
 
         :param service: Name of service to which units will be added.
@@ -273,7 +273,8 @@ class Deployment(object):
             if target is not None:
                 args.extend(["--to", target])
             juju(args)
-            self.sentry = Talisman(self.services, juju_env=self.juju_env)
+            self.sentry = Talisman(
+                self.services, juju_env=self.juju_env, timeout=timeout)
 
     def remove_unit(self, *units):
         """Remove (destroy) one or more already-deployed units.
