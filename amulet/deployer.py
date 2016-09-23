@@ -489,7 +489,7 @@ class Deployment(object):
                 service['options'][k] = v
 
         if self.deployed:
-            juju_set_cmd = 'set' if JUJU_VERSION.major == 1 else 'set-config'
+            juju_set_cmd = 'set' if JUJU_VERSION.major == 1 else 'config'
             opts = [juju_set_cmd, service]
             for k, v in options.items():
                 opts.append("%s=%s" % (k, v))
