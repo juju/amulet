@@ -114,7 +114,8 @@ class Deployment(object):
             old-style bundle files that contain multiple named deployments.
 
         """
-        if deployment_name is None and 'services' in deploy_cfg:
+        if deployment_name is None and ('services' in deploy_cfg or
+                                        'applications' in deploy_cfg):
             # v4 format
             schema = deploy_cfg
         else:
@@ -123,7 +124,11 @@ class Deployment(object):
                 or next(iter(deploy_cfg.values()))
         self.series = schema.get('series', self.series)
         self.relations = schema.get('relations', [])
-        for service, service_config in schema['services'].items():
+        if schema.get('applications'):
+            services = schema['applications']
+        else:
+            services = schema['services']
+        for service, service_config in services.items():
             constraints = service_config.get('constraints')
             if constraints:
                 constraints = dict(
