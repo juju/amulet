@@ -1,3 +1,4 @@
 include *.py README VERSION
 recursive-include amulet *.py
 recursive-include tests *.py
+prune Makefile
