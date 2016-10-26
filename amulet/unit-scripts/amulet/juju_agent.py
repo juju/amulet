@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/tmp/amulet/find_python.sh
 
 import json
 import os
