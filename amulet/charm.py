@@ -9,7 +9,7 @@ import yaml
 from .helpers import reify
 from .helpers import run_bzr
 from charmstore import Charm
-from path import path
+from path import Path as path
 from path import tempdir
 
 
