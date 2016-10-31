@@ -8,7 +8,7 @@ import subprocess
 import warnings
 import yaml
 
-from path import path
+from path import Path as path
 from path import tempdir
 
 from . import actions
