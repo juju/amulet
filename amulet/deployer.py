@@ -326,14 +326,19 @@ class Deployment(object):
             if service not in self.services:
                 raise ValueError('%s is not a deployed service' % service)
 
-        if self.deployed:
-            juju(['remove-service'] + list(services))
+        remove_cmd = (
+            'remove-service' if JUJU_VERSION.major == 1
+            else 'remove-application'
+        )
 
         for service in services:
+            if self.deployed:
+                juju([remove_cmd, service])
             self._remove_service_sentries(service)
             self._remove_service_relations(service)
             del self.services[service]
     destroy_service = remove_service
+    remove_application = remove_service
 
     def remove(self, *units_or_services):
         """Remove (destroy) one or more already-deployed services or units.

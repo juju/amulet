@@ -304,7 +304,10 @@ class DeployerTests(unittest.TestCase):
         d.relations = [('charm:rel', 'another:rel')]
         with patch('amulet.deployer.juju') as juju:
             d.remove_service('charm')
-            juju.assert_called_once_with(['remove-service', 'charm'])
+            if JUJU_VERSION.major == 1:
+                juju.assert_called_once_with(['remove-service', 'charm'])
+            else:
+                juju.assert_called_once_with(['remove-application', 'charm'])
         self.assertFalse('charm/0' in sentry.unit)
         self.assertFalse('charm' in d.services)
         self.assertEqual(0, len(d.relations))
