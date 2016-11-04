@@ -63,6 +63,7 @@ class Deployment(object):
 
         """
         self.services = {}
+        self.machines = {}
         self.relations = []
         self.interfaces = []
         self.subordinates = []
@@ -122,12 +123,16 @@ class Deployment(object):
             # v3 format
             schema = deploy_cfg.get(deployment_name, None) \
                 or next(iter(deploy_cfg.values()))
+
         self.series = schema.get('series', self.series)
         self.relations = schema.get('relations', [])
+        self.machines = schema.get('machines', {})
+
         if schema.get('applications'):
             services = schema['applications']
         else:
             services = schema['services']
+
         for service, service_config in services.items():
             constraints = service_config.get('constraints')
             if constraints:
@@ -466,7 +471,14 @@ class Deployment(object):
         """Return the deployment schema (bundle) as a dictionary.
 
         """
-        return self._deployer_map(self.services, self.relations)
+        return {
+            self.juju_env: {
+                'series': self.series,
+                'services': self.services,
+                'relations': self.relations,
+                'machines': self.machines,
+            }
+        }
 
     def configure(self, service, options):
         """Change configuration options for a service (deployed or not).
@@ -656,7 +668,9 @@ class Deployment(object):
             schema_file = tmpdir / 'deployer-schema.json'
             schema_file.write_text(schema_json)
 
-            cmd = "{deployer} -W {debug} -c {schema} -e {env} -t {timeout} {env}"
+            cmd = (
+                "{deployer} -W {debug} -c {schema} -e {env} -t {timeout} {env}"
+            )
             cmd_args = dict(
                 deployer=self.deployer.expanduser(),
                 debug=(
@@ -678,19 +692,3 @@ class Deployment(object):
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)
-
-    def _deployer_map(self, services, relations):
-        return {
-            self.juju_env: {
-                'series': self.series,
-                'services': self.services,
-                'relations': self._build_relations()
-            }
-        }
-
-    def _build_relations(self):
-        relations = []
-        for rel in self.relations:
-            relations.append(rel)
-
-        return relations

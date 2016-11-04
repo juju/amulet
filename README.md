@@ -159,14 +159,6 @@ d.add('charm', units=2, constraints=OrderedDict([
 ```
 
 
-#### Deployment.build_relations()
-
-Private method invoked during `deployer_map`. Creates relation mapping.
-
-#### Deployment.build_sentries()
-
-Private method invoked during `deployer_map`. Creates sentries for services.
-
 #### Deployment.configure(service, options)
 
 Change configuration options for a service
@@ -181,13 +173,6 @@ d = amulet.Deployment()
 d.add('postgresql')
 d.configure('postgresql', {'autovacuum': True, 'cluster_name': 'cname'})
 ```
-
-#### Deployment.deployer_map(services, relations)
-
-Create deployer file from provided services and relations
-
-- `services` Object of service and service data
-- `relations` List of relations to map
 
 #### Deployment.expose(service)
 

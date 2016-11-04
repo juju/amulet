@@ -454,6 +454,7 @@ class DeployerTests(unittest.TestCase):
             },
             'series': 'precise',
             'relations': [['mysql:db', 'wordpress:db']],
+            'machines': {},
         }}
         self.assertEqual(schema, d.schema())
 

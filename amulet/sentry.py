@@ -114,7 +114,7 @@ class UnitSentry(Sentry):
             self.ssh(mkdir_cmd, raise_on_failure=True)
 
         # copy one at a time b/c `juju scp -r` doesn't work (currently)
-        for f in glob.glob(os.path.join(source, '*.py')):
+        for f in glob.glob(os.path.join(source, '*')):
             cmd = "juju scp {} {}:{}".format(
                 os.path.join(source, f),
                 self.info['unit_name'], dest)
