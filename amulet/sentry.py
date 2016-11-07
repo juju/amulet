@@ -79,7 +79,12 @@ class UnitSentry(Sentry):
         d = unitsentry.info = unit_data
         d['unit_name'] = unit
         d['service'], d['unit'] = unit.split('/')
-        unitsentry.upload_scripts()
+
+        try:
+            unitsentry.upload_scripts()
+        except:
+            raise SentryError('Unable to upload scripts')
+
         return unitsentry
 
     def list_actions(self):

@@ -17,8 +17,14 @@ from .helpers import (
     juju,
     timeout as unit_timesout,
     JUJU_VERSION,
+    INFRA_FAIL,
+    raise_status,
 )
-from .sentry import Talisman
+from .sentry import (
+    Talisman,
+    SentryError,
+)
+
 from .charm import CharmCache
 
 logger = logging.getLogger(__name__)
@@ -282,9 +288,14 @@ class Deployment(object):
             args = ['add-unit', service, '-n', str(units)]
             if target is not None:
                 args.extend(["--to", target])
+
             juju(args)
-            self.sentry = Talisman(
-                self.services, juju_env=self.juju_env, timeout=timeout)
+
+            try:
+                self.sentry = Talisman(
+                    self.services, juju_env=self.juju_env, timeout=timeout)
+            except SentryError as e:
+                raise_status(INFRA_FAIL, msg=e.message)
 
     def remove_unit(self, *units):
         """Remove (destroy) one or more already-deployed units.
@@ -692,8 +703,12 @@ class Deployment(object):
             with self._deploy_w_timeout(timeout):
                 subprocess.check_call(shlex.split(cmd))
 
-        self.sentry = Talisman(
-            self.services, timeout=timeout, juju_env=self.juju_env)
+        try:
+            self.sentry = Talisman(
+                self.services, timeout=timeout, juju_env=self.juju_env)
+        except SentryError as e:
+            raise_status(INFRA_FAIL, msg=e.message)
+
         if cleanup is False:
             tmpdir.makedirs()
             (tmpdir / 'deployer-schema.json').write_text(schema_json)

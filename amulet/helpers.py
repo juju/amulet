@@ -10,6 +10,7 @@ from datetime import datetime
 
 from contextlib import contextmanager
 
+INFRA_FAIL = 200
 SKIP = 100
 PASS = 0
 FAIL = 1
