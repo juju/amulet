@@ -8,6 +8,8 @@ from datetime import datetime
 
 import pkg_resources
 
+from path import Path
+
 from . import actions
 from . import waiter
 from . import helpers
@@ -118,12 +120,9 @@ class UnitSentry(Sentry):
             # try one more time
             self.ssh(mkdir_cmd, raise_on_failure=True)
 
-        # copy one at a time b/c `juju scp -r` doesn't work (currently)
-        for f in glob.glob(os.path.join(source, '*')):
-            cmd = "juju scp {} {}:{}".format(
-                os.path.join(source, f),
-                self.info['unit_name'], dest)
-            subprocess.check_call(cmd.split())
+        subprocess.check_call(['juju', 'scp'] +
+                              Path(source).files() +
+                              ['{}:{}'.format(self.info['unit_name'], dest)])
 
     def _fs_data(self, path):
         return self._run_unit_script("filesystem_data.py {}".format(path))
