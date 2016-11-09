@@ -295,7 +295,7 @@ class Deployment(object):
                 self.sentry = Talisman(
                     self.services, juju_env=self.juju_env, timeout=timeout)
             except SentryError as e:
-                raise_status(INFRA_FAIL, msg=e.message)
+                raise_status(INFRA_FAIL, msg=e)
 
     def remove_unit(self, *units):
         """Remove (destroy) one or more already-deployed units.
@@ -707,7 +707,7 @@ class Deployment(object):
             self.sentry = Talisman(
                 self.services, timeout=timeout, juju_env=self.juju_env)
         except SentryError as e:
-            raise_status(INFRA_FAIL, msg=e.message)
+            raise_status(INFRA_FAIL, msg=e)
 
         if cleanup is False:
             tmpdir.makedirs()
