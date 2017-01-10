@@ -154,7 +154,8 @@ class Deployment(object):
                 branch=service_config.get('branch', None),
                 constraints=constraints,
                 placement=service_config.get('to', None),
-                series=self.series
+                series=self.series,
+                storage=service_config.get('storage')
             )
 
             if service_config.get('options'):
@@ -169,7 +170,8 @@ class Deployment(object):
             constraints=None,
             branch=None,
             placement=None,
-            series=None):
+            series=None,
+            storage=None):
         """Add a new service to the deployment schema.
 
         :param service_name: Name of the service to deploy.
@@ -185,6 +187,8 @@ class Deployment(object):
             "lxc:wordpress/0 - Deploy to lxc container on first wordpress unit
 
         :param series: Series of charm to deploy, e.g. precise, trusty, xenial
+        :param storage: Storage configuration as a dictionary with key the
+            label and value being the pool,size,count string used by Juju.
 
         Example::
 
@@ -193,6 +197,7 @@ class Deployment(object):
             d.add('wordpress')
             d.add('second-wp', charm='wordpress')
             d.add('personal-wp', charm='~marcoceppi/wordpress', units=2)
+            d.add('postgresql', storage={'pgdata', 'rootfs,50M'})
 
         """
         if self.deployed:
@@ -203,6 +208,11 @@ class Deployment(object):
 
         service = self.services[service_name] = {}
         service['series'] = series or self.series
+
+        if storage is not None:
+            if not isinstance(storage, dict):
+                raise ValueError('Storage must be specified as a dict')
+            service['storage'] = storage
 
         charm = self.charm_cache.fetch(
             service_name, charm, branch=branch, series=service['series'])

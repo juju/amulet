@@ -47,10 +47,11 @@ class DeployerTests(unittest.TestCase):
         d = Deployment(juju_env='gojuju')
         schema = '{"mybundle": {"series": "raring", "services": {"wordpress": \
                   {"branch": "lp:~charmers/charms/precise/wordpress/trunk", \
-                  "expose": true}, "mysql": {"options": {"tuning": \
-                  "fastest"}, "constraints": "mem=2G cpu-cores=2", \
-                  "branch": "lp:~charmers/charms/precise/mysql/trunk"}}, \
-                  "relations": [["mysql:db", "wordpress:db"]]}}'
+                  "expose": true, "storage": {"wp-data": "rootfs,100M"}}, \
+                  "mysql": {"options": {"tuning": "fastest"}, "constraints": \
+                  "mem=2G cpu-cores=2", "branch": \
+                  "lp:~charmers/charms/precise/mysql/trunk"}}, "relations": \
+                  [["mysql:db", "wordpress:db"]]}}'
         dmap = json.loads(schema)
         with patch.object(d, 'add') as add:
             with patch.object(d, 'configure') as configure:
@@ -63,6 +64,7 @@ class DeployerTests(unittest.TestCase):
             call('wordpress',
                  placement=None,
                  series='raring',
+                 storage={"wp-data": "rootfs,100M"},
                  units=1,
                  branch='lp:~charmers/charms/precise/wordpress/trunk',
                  constraints=None,
@@ -70,6 +72,7 @@ class DeployerTests(unittest.TestCase):
             call('mysql',
                  placement=None,
                  series='raring',
+                 storage=None,
                  units=1,
                  branch='lp:~charmers/charms/precise/mysql/trunk',
                  constraints={'mem': '2G', 'cpu-cores': '2'},
@@ -156,6 +159,20 @@ class DeployerTests(unittest.TestCase):
                                     'constraints':
                                     'cpu-power=0 cpu-cores=4 mem=512M',
                                     'num_units': 2}}, d.services)
+
+    @patch('amulet.charm.CharmCache.get_charm')
+    def test_add_storage(self, mcharm):
+        charm = mcharm.return_value
+        charm.subordinate = False
+        charm.code_source = {'location': 'lp:charms/charm'}
+        charm.url = None
+
+        d = Deployment(juju_env='gojuju')
+        d.add('charm', storage={"mystorage": "ebs,10g,1"})
+        self.assertEqual({'charm': {'branch': 'lp:charms/charm',
+                                    'num_units': 1,
+                                    'series': 'precise',
+                                    'storage': {"mystorage": "ebs,10g,1"}}}, d.services)
 
     def _make_mock_status(self, d):
         def _mock_status(juju_env):
