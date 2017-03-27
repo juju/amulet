@@ -8,7 +8,6 @@ import time
 from amulet.helpers import (
     JujuVersion,
     environments,
-    default_environment,
     juju,
     raise_status,
     timeout_gen,
@@ -49,7 +48,7 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, 3)
         self.assertEqual(str(version), '1.2.3')
 
-        mj.assert_called_with(['version'])
+        mj.assert_called_with(['version'], include_model=False)
 
     @patch('amulet.helpers.juju')
     def test_jujuversion_py(self, mj):
@@ -61,7 +60,7 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, None)
         self.assertEqual(str(version), '8.6')
 
-        mj.assert_called_with(['--version'])
+        mj.assert_called_with(['--version'], include_model=False)
 
     @patch('amulet.helpers.juju')
     def test_jujuversion_malformed(self, mj):
@@ -73,7 +72,7 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(version.patch, 3)
         self.assertEqual(str(version), '1.2.3')
 
-        mj.assert_called_once_with(['version'])
+        mj.assert_called_once_with(['version'], include_model=False)
 
     @patch('os.path.isfile')
     @patch('builtins.open' if sys.version_info > (3,) else '__builtin__.open')
@@ -105,7 +104,9 @@ class HelpersTest(unittest.TestCase):
 
 class JujuTest(unittest.TestCase):
     def test_juju(self):
-        self.assertEqual(str(JujuVersion()), juju(['version']).split('-')[0])
+        self.assertEqual(str(JujuVersion()),
+                         juju(['version'],
+                              include_model=False).split('-')[0])
 
     @patch('amulet.helpers.subprocess.Popen')
     def test_juju_oserror(self, mp):

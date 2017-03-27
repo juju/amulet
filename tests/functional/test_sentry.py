@@ -7,10 +7,10 @@ class TestDeployment(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.deployment = amulet.Deployment(series='precise')
+        cls.deployment = amulet.Deployment(series='trusty')
 
         cls.deployment.add('nagios')
-        cls.deployment.add('haproxy', charm='cs:~marcoceppi/precise/haproxy-0')
+        cls.deployment.add('haproxy')
         cls.deployment.add('rsyslog-forwarder')
         cls.deployment.relate('nagios:website', 'haproxy:reverseproxy')
         cls.deployment.relate(
@@ -60,7 +60,7 @@ class TestDeployment(unittest.TestCase):
                 'size': 9,
                 'uid': 0,
                 'gid': 0,
-                'mode': '0100644',
+                'mode': '0o100644',
             },
         )
         stat = self.nagios.file_stat('metadata.yaml')
@@ -98,7 +98,7 @@ class TestDeployment(unittest.TestCase):
                 'size': stat['size'],
                 'uid': 0,
                 'gid': 0,
-                'mode': '040700',
+                'mode': '0o40700',
             },
         )
         stat = self.nagios.directory_stat('hooks')
@@ -123,7 +123,8 @@ class TestDeployment(unittest.TestCase):
 
         haproxy_info = self.haproxy.relation(
             'reverseproxy', 'nagios:website')
-        self.assertEqual(list(haproxy_info.keys()), ['private-address'])
+        self.assertEqual(set(haproxy_info.keys()), {'private-address',
+                                                    'public-address'})
 
     def test_run(self):
         self.assertEqual(

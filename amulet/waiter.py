@@ -17,7 +17,7 @@ def wait(*args, **kwargs):
     """Wait until all criteria is met for a given juju environment
 
     When run without parameters the following defaults are used:
-      - juju_env = os.environ['JUJU_ENV']
+      - juju_env = amulet.helpers.default_environment()
       - timeout = 300 (5m)
       - Wait will pause execution and wait for ALL units to move to a non-error
       state.
@@ -28,11 +28,8 @@ def wait(*args, **kwargs):
       amulet.wait('service_a', 'service_a/1')
 
     """
-    import os
-
     if 'juju_env' not in kwargs:
-        kwargs['juju_env'] = \
-            os.environ.get('JUJU_ENV') or default_environment()
+        kwargs['juju_env'] = default_environment()
 
     if 'timeout' not in kwargs:
         kwargs['timeout'] = 300

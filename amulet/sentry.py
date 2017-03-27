@@ -1,9 +1,9 @@
 import gc
-import glob
 import json
 import logging
 import os
 import subprocess
+import time
 from datetime import datetime
 
 import pkg_resources
@@ -111,18 +111,31 @@ class UnitSentry(Sentry):
     action_do = run_action
 
     def upload_scripts(self):
+        model = helpers.default_environment()
+        model_flag = '-m' if helpers.JUJU_VERSION.major == 2 else '-e'
         source = pkg_resources.resource_filename(
             'amulet', os.path.join('unit-scripts', 'amulet'))
         dest = '/tmp/amulet'
         mkdir_cmd = 'mkdir -p -m a=rwx {}'.format(dest)
-        output, code = self.ssh(mkdir_cmd, raise_on_failure=False)
-        if code != 0:
-            # try one more time
-            self.ssh(mkdir_cmd, raise_on_failure=True)
+        for i in range(3):  # try thrice
+            output, code = self.ssh(mkdir_cmd,
+                                    model=model, raise_on_failure=False)
+            if code == 0:
+                break
+            time.sleep(5)  # sleep a short bit and try again
 
-        subprocess.check_call(['juju', 'scp'] +
-                              Path(source).files() +
-                              ['{}:{}'.format(self.info['unit_name'], dest)])
+        for i in range(3):  # try thrice
+            try:
+                subprocess.check_call(['juju', 'scp', model_flag, model] +
+                                      Path(source).files() +
+                                      ['{}:{}'.format(self.info['unit_name'],
+                                                      dest)])
+            except subprocess.CalledProcessError:
+                if i == 2:  # final countdown
+                    raise
+                time.sleep(5)  # sleep a short bit and try again
+            else:
+                break
 
     def _fs_data(self, path):
         return self._run_unit_script("filesystem_data.py {}".format(path))
@@ -232,7 +245,7 @@ class UnitSentry(Sentry):
         output = stdout if p.returncode == 0 else stderr
         return output.decode('utf8'), p.returncode
 
-    def ssh(self, command, unit=None, raise_on_failure=False):
+    def ssh(self, command, unit=None, raise_on_failure=False, model=None):
         """Run an arbitrary command (as the ubuntu user) against a remote
         unit, using `juju ssh`.
 
@@ -251,7 +264,10 @@ class UnitSentry(Sentry):
 
         """
         unit = unit or self.info['unit_name']
-        cmd = ['juju', 'ssh', unit, '-v', command]
+        if model is None:
+            model = helpers.default_environment()
+        model_flag = '-m' if helpers.JUJU_VERSION.major == 2 else '-e'
+        cmd = ['juju', 'ssh', model_flag, model, unit, '-v', command]
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

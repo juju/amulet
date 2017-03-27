@@ -58,7 +58,16 @@ def run_bzr(args, working_dir, env=None):
     return _as_text(out)
 
 
-def juju(args, env=None):
+def juju(args, env=None, include_model=True):
+    if include_model:
+        model_flag = '-m' if JUJU_VERSION.major == 2 else '-e'
+        for arg in args:
+            if arg.startswith(model_flag):
+                break
+        else:
+            args = list(args)
+            # insert the model arg after the command, but before any other args
+            args[1:0] = [model_flag, default_environment()]
     try:
         p = subprocess.Popen(['juju'] + args, env=env, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
@@ -156,9 +165,9 @@ class JujuVersion(object):
 
     def get_version(self):
         try:
-            version = juju(['version'])
+            version = juju(['version'], include_model=False)
         except:
-            version = juju(['--version'])
+            version = juju(['--version'], include_model=False)
 
         self.update_version(self.parse_version(version))
 
@@ -189,9 +198,21 @@ def raise_status(code, msg=None):
 
 
 def default_environment():
-    return os.getenv(
-        'JUJU_MODEL',
-        subprocess.check_output(['juju', 'switch']).strip().decode('utf8'))
+    """
+    Get the current active (default) Juju model / environment.
+
+    It will check, in order of preference:
+
+    * The JUJU_MODEL environment variable
+    * The JUJU_ENV environment variable
+    * The output of `juju switch`
+    """
+    model = os.getenv('JUJU_MODEL')
+    if not model:
+        model = os.getenv('JUJU_ENV')
+    if not model:
+        model = juju(['switch'], include_model=False).strip()
+    return model
 
 
 class reify(object):
