@@ -36,6 +36,10 @@ class CharmCache(dict):
         if branch and branch.endswith('.git'):
             return GitCharm(branch, name=charm_path)
 
+        # Need a better way to validate, maybe using charmtools/fetchers.py
+        if branch and 'github.com' in branch:
+            return GitCharm(branch, name=charm_path)
+
         if os.path.exists(os.path.expanduser(charm_path)):
             return LocalCharm(charm_path, series)
 
@@ -151,6 +155,11 @@ class GitCharm(VCSCharm):
         with tempdir() as td:
             cmd = "git clone -n --depth=1 {} {}"\
                 .format(self.fork, self.name)
+
+            if '@' in self.fork:
+                repo, branch = self.fork.split('@', 1)
+                cmd = "git clone -n -b {} --depth=1 {} {}"\
+                    .format(branch, repo, self.name)
 
             with path(td):
                 self.call(shlex.split(cmd))
