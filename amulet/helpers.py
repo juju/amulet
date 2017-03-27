@@ -189,7 +189,9 @@ def raise_status(code, msg=None):
 
 
 def default_environment():
-    return subprocess.check_output(['juju', 'switch']).strip().decode('utf8')
+    return os.getenv(
+        'JUJU_MODEL',
+        subprocess.check_output(['juju', 'switch']).strip().decode('utf8'))
 
 
 class reify(object):
