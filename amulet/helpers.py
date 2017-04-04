@@ -15,6 +15,9 @@ SKIP = 100
 PASS = 0
 FAIL = 1
 
+JUJU_VERSION = None  # will be set below
+JUJU_MODEL = None  # will be set below
+
 
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
@@ -207,11 +210,17 @@ def default_environment():
     * The JUJU_ENV environment variable
     * The output of `juju switch`
     """
+    global JUJU_MODEL
+    if JUJU_MODEL is not None:
+        return JUJU_MODEL
     model = os.getenv('JUJU_MODEL')
     if not model:
         model = os.getenv('JUJU_ENV')
     if not model:
         model = juju(['switch'], include_model=False).strip()
+    # cache the active environment to ensure the
+    # same one is used for the entire test run
+    JUJU_MODEL = model
     return model
 
 
