@@ -63,14 +63,9 @@ def run_bzr(args, working_dir, env=None):
 
 def juju(args, env=None, include_model=True):
     if include_model:
-        model_flag = '-m' if JUJU_VERSION.major == 2 else '-e'
-        for arg in args:
-            if arg.startswith(model_flag):
-                break
-        else:
-            if env is None:
-                env = os.environ
-            env['JUJU_ENV'] = env['JUJU_MODEL'] = default_environment()
+        if env is None:
+            env = os.environ
+        env['JUJU_ENV'] = env['JUJU_MODEL'] = default_environment()
     try:
         p = subprocess.Popen(['juju'] + args, env=env, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
