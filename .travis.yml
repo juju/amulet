@@ -1,28 +1,20 @@
 dist: trusty
 sudo: required
 language: python
-python:
-  - "2.7"
-  - "3.5"
-before_install:
-  - sudo add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
-  - sudo add-apt-repository -y ppa:juju/stable
-  - sudo apt-get update
-  - sudo apt-get install -y lxd juju bzr
-  - sudo usermod -a -G lxd $USER
-  - sudo lxd init --auto
-  - echo 'NAME="Ubuntu"' | sudo tee /etc/os-release
-  - echo 'VERSION="14.04.2 LTS, Trusty Tahr"' | sudo tee -a /etc/os-release
-  - echo 'ID=ubuntu' | sudo tee -a /etc/os-release
-  - echo 'ID_LIKE=debian' | sudo tee -a /etc/os-release
-  - echo 'PRETTY_NAME="Ubuntu 14.04.2 LTS"' | sudo tee -a /etc/os-release
-  - echo 'VERSION_ID="14.04"' | sudo tee -a /etc/os-release
-  - echo 'HOME_URL="http://www.ubuntu.com/"' | sudo tee -a /etc/os-release
-install: "pip install -e .; pip install -r test-requires.txt; pip install python-coveralls"
+matrix:
+  include:
+    - python: 2.7
+      env: JUJU_VERSION=1
+    - python: 3.5
+      env: JUJU_VERSION=2
+install:
+  - .travis/install.sh
+  - pip install -r test-requires.txt python-coveralls -e .
 before_script:
-  - sudo -E sudo -u $USER -E bash -c "juju bootstrap localhost test"
-script: "nosetests --nologcapture --with-coverage --cover-package=amulet"
+  - ./.travis/bootstrap.sh
+script:
+  - nosetests --nologcapture --with-coverage --cover-package=amulet
 after_success:
   - coveralls
 after_script:
-  - sudo -E sudo -u $USER -E bash -c "juju destroy-controller --destroy-all-models -y test"
+  - ./.travis/cleanup.sh
