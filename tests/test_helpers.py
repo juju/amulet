@@ -8,6 +8,7 @@ import time
 from amulet.helpers import (
     JujuVersion,
     environments,
+    default_environment,
     juju,
     raise_status,
     timeout_gen,
@@ -100,6 +101,15 @@ class HelpersTest(unittest.TestCase):
                     return
         self.assertRaises(TimeoutError, case, 0.1)
         case(0.5)
+
+    @patch('amulet.helpers.juju')
+    @patch('amulet.helpers.JUJU_MODEL', None)
+    @patch('os.environ', {})
+    def test_default_env_cache(self, juju):
+        juju.return_value = 'test-env'
+        self.assertEqual(default_environment(), 'test-env')
+        juju.return_value = 'new-env'
+        self.assertEqual(default_environment(), 'test-env')
 
 
 class JujuTest(unittest.TestCase):

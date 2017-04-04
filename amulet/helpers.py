@@ -15,6 +15,9 @@ SKIP = 100
 PASS = 0
 FAIL = 1
 
+JUJU_VERSION = None  # will be set below
+JUJU_MODEL = None  # will be set below
+
 
 class TimeoutError(Exception):
     def __init__(self, value="Timed Out"):
@@ -60,14 +63,9 @@ def run_bzr(args, working_dir, env=None):
 
 def juju(args, env=None, include_model=True):
     if include_model:
-        model_flag = '-m' if JUJU_VERSION.major == 2 else '-e'
-        for arg in args:
-            if arg.startswith(model_flag):
-                break
-        else:
-            args = list(args)
-            # insert the model arg after the command, but before any other args
-            args[1:0] = [model_flag, default_environment()]
+        if env is None:
+            env = os.environ
+        env['JUJU_ENV'] = env['JUJU_MODEL'] = default_environment()
     try:
         p = subprocess.Popen(['juju'] + args, env=env, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
@@ -207,11 +205,17 @@ def default_environment():
     * The JUJU_ENV environment variable
     * The output of `juju switch`
     """
+    global JUJU_MODEL
+    if JUJU_MODEL is not None:
+        return JUJU_MODEL
     model = os.getenv('JUJU_MODEL')
     if not model:
         model = os.getenv('JUJU_ENV')
     if not model:
         model = juju(['switch'], include_model=False).strip()
+    # cache the active environment to ensure the
+    # same one is used for the entire test run
+    JUJU_MODEL = model
     return model
 
 

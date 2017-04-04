@@ -153,9 +153,18 @@ class WaitTest(unittest.TestCase):
         tout.side_effect = TimeoutError
         self.assertRaises(TimeoutError, wait, juju_env='dummy')
 
+    @patch('amulet.helpers.JUJU_MODEL', None)
     @patch('amulet.waiter.state')
-    @patch.dict('os.environ', {'JUJU_ENV': 'testing-env'})
+    @patch.dict('os.environ', {'JUJU_ENV': 'testing-env', 'JUJU_MODEL': ''})
     def test_wait_juju_env(self, waiter_status):
+        waiter_status.return_value = {'test': {'0': 'started'}}
+        wait()
+        waiter_status.assert_called_with(juju_env='testing-env')
+
+    @patch('amulet.helpers.JUJU_MODEL', None)
+    @patch('amulet.waiter.state')
+    @patch.dict('os.environ', {'JUJU_MODEL': 'testing-env', 'JUJU_ENV': 'foo'})
+    def test_wait_juju_model(self, waiter_status):
         waiter_status.return_value = {'test': {'0': 'started'}}
         wait()
         waiter_status.assert_called_with(juju_env='testing-env')

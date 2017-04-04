@@ -1,12 +1,16 @@
-language: python
+dist: trusty
 sudo: required
+language: python
 python:
   - "2.7"
-  - "3.3"
+  - "3.5"
 before_install:
+  - sudo add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
   - sudo add-apt-repository -y ppa:juju/stable
   - sudo apt-get update
-  - sudo apt-get install juju bzr
+  - sudo apt-get install -y lxd juju bzr
+  - sudo usermod -a -G lxd $USER
+  - sudo lxd init --auto
   - echo 'NAME="Ubuntu"' | sudo tee /etc/os-release
   - echo 'VERSION="14.04.2 LTS, Trusty Tahr"' | sudo tee -a /etc/os-release
   - echo 'ID=ubuntu' | sudo tee -a /etc/os-release
@@ -15,6 +19,10 @@ before_install:
   - echo 'VERSION_ID="14.04"' | sudo tee -a /etc/os-release
   - echo 'HOME_URL="http://www.ubuntu.com/"' | sudo tee -a /etc/os-release
 install: "pip install -e .; pip install -r test-requires.txt; pip install python-coveralls"
-script: "nosetests --nologcapture --with-coverage --cover-package=amulet -e functional"
+before_script:
+  - sudo -E sudo -u $USER -E bash -c "juju bootstrap localhost test"
+script: "nosetests --nologcapture --with-coverage --cover-package=amulet"
 after_success:
   - coveralls
+after_script:
+  - sudo -E sudo -u $USER -E bash -c "juju destroy-controller --destroy-all-models -y test"
