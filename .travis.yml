@@ -13,7 +13,7 @@ install:
 before_script:
   - ./.travis/bootstrap.sh
 script:
-  - nosetests --nologcapture --with-coverage --cover-package=amulet
+  - nosetests -v --nologcapture --with-coverage --cover-package=amulet
 after_success:
   - coveralls
 after_script:

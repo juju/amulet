@@ -1,6 +1,4 @@
-#!/bin/bash
-
-set -e
+#!/bin/bash -uex
 
 cat << EOR | sudo tee -a /etc/os-release
 NAME="Ubuntu"
@@ -17,6 +15,7 @@ if [[ $JUJU_VERSION == 2 ]]; then
     sudo add-apt-repository -y ppa:ubuntu-lxc/lxd-stable
     JUJU_PKGS="juju lxd"
 else
+    sudo add-apt-repository -y ppa:juju/1.25
     JUJU_PKGS="juju juju-local"
 fi
 

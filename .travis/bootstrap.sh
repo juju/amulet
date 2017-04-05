@@ -1,6 +1,4 @@
-#!/bin/bash
-
-set -e
+#!/bin/bash -uex
 
 if [[ $JUJU_VERSION == 2 ]]; then
     # the "sudo sudo bash" is to ensure that the lxd group is active
