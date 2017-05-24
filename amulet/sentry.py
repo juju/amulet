@@ -544,7 +544,7 @@ class Talisman(object):
                 service = status.get(service_name, {})
                 for unit_name, unit in service.items():
                     if unit['agent-status']:
-                        if unit['agent-status']['current'] != 'idle':
+                        if unit['agent-status'].get('current') != 'idle':
                             return False
                         since = datetime.strptime(unit['agent-status']['since'][:20], '%d %b %Y %H:%M:%S')
                         if (datetime.now() - since).total_seconds() < IDLE_THRESHOLD:
